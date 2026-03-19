@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Integrated-USDM-EARS-Node",
+  "type": "object",
+  "required": ["id", "type", "description", "status"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "parentId": { "type": ["string", "null"], "format": "uuid" },
+    "type": { "enum": ["Requirement", "Rationale", "Specification"] },
+    "description": { "type": "string", "description": "自然言語による記述（Linterの検証対象）" },
+    "status": { "$ref": "#/definitions/RequirementStatus" },
+    
+    "earsContext": {
+      "type": "object",
+      "description": "EARS構文に基づく構造化データ。用語集（Glossary）との紐付けに使用",
+      "properties": {
+        "pattern": { 
+          "enum": ["Ubiquitous", "EventDriven", "StateDriven", "UnwantedBehavior", "OptionalFeature", "None"] 
+        },
+        "precondition": { "type": "string", "description": "While <precondition>" },
+        "trigger": { "type": "string", "description": "When <trigger>" },
+        "actor": { "type": "string", "description": "the <actor>" },
+        "response": { "type": "string", "description": "shall <response>" }
+      }
+    },
+
+    "qualityGate": {
+      "type": "object",
+      "properties": {
+        "isPassed": { "type": "boolean" },
+        "errors": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ValidationError" }
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "hasSubject": { "type": "boolean" },
+            "isPositive": { "type": "boolean" },
+            "noAmbiguity": { "type": "boolean" },
+            "glossaryAdherence": { "type": "boolean", "description": "用語集に従っているか" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RequirementStatus": {
+      "enum": ["Draft", "LinterOk", "Staged", "Validating", "Validated", "ReviewRequired", "Approved"]
+    },
+    "ValidationError": {
+      "type": "object",
+      "properties": {
+        "ruleId": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "enum": ["Error", "Warning", "Info"] }
+      }
+    }
+  }
+}

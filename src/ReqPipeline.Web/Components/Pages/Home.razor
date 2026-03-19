@@ -1,0 +1,379 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+@using System.IO
+@using ReqPipeline.Core.Application
+@using ReqPipeline.Core.Models
+@using ReqPipeline.Core.Interfaces
+@using ReqPipeline.Core.QaIntegration
+
+@inject PipelineOrchestrator Orchestrator
+@inject IRequirementProvider Provider
+@inject IGlossaryProvider GlossaryProvider
+@inject AiQaPerspectiveGenerator QaGenerator
+
+<PageTitle>USDM Editor & Viewer</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📑 USDM Editor & Viewer</h1>
+        <div>
+            <button class="btn btn-outline-primary shadow-sm me-2" @onclick="() => OpenModal(null)">
+                ➕ 新しいルート要求を追加
+            </button>
+            <button class="btn btn-primary shadow" @onclick="RunPipeline" disabled="@_isRunning">
+                @if (_isRunning) { <span class="spinner-border spinner-border-sm"></span> }
+                else { <span>🔍 AI検証を実行</span> }
+            </button>
+        </div>
+    </div>
+
+    @if (_nodes.Any())
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-bordered table-hover table-sm custom-usdm-table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 8%">種別</th>
+                        <th style="width: 35%">記述 (要求 / 理由 / 仕様)</th>
+                        <th style="width: 25%">EARS コンテキスト</th>
+                        <th style="width: 12%">AI検証状態</th>
+                        <th style="width: 20%">アクション</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var node in _nodes)
+                    {
+                        var rowClass = node.Type switch {
+                            UsdmType.Requirement => "table-primary-subtle fw-bold",
+                            UsdmType.Rationale => "table-secondary-subtle fst-italic",
+                            _ => "bg-white"
+                        };
+                        var indent = node.ParentId == null ? 0 : (GetLevel(node) * 1.5);
+                        var issues = _context?.Issues.Where(i => i.Message.Contains(node.Description)).ToList() ?? new();
+
+                        <tr class="@rowClass">
+                            <td class="align-middle text-center"><span class="badge @GetBadgeClass(node.Type)">@node.Type</span></td>
+                            <td class="align-middle">
+                                <div style="margin-left: @(indent)rem;">
+                                    @if (node.Type == UsdmType.Requirement) { <span class="fs-6">@node.Description</span> }
+                                    else { @node.Description }
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                @if (node.Type == UsdmType.Specification && node.EarsContext != null)
+                                {
+                                    <div class="ears-box small">
+                                        <span class="text-primary fw-bold">[@node.EarsContext.Pattern]</span><br/>
+                                        <span class="text-muted">Trigger:</span> @node.EarsContext.Trigger<br/>
+                                        <span class="text-muted">Actor:</span> @node.EarsContext.Actor<br/>
+                                        <span class="text-muted">Response:</span> @node.EarsContext.Response
+                                    </div>
+                                }
+                            </td>
+                            <td class="align-middle text-center">
+                                @if (issues.Any()) { <span class="badge bg-danger">⚠️ 矛盾</span> }
+                                else if (_context != null) { <span class="badge bg-success">✅ OK</span> }
+                                else { <span class="badge bg-secondary">未検証</span> }
+                            </td>
+                            <td class="align-middle text-center">
+                                <!-- 💡 QA観点生成ボタンを追加 -->
+                                @if (node.Type == UsdmType.Specification)
+                                {
+                                    <button class="btn btn-sm btn-outline-success me-1" title="QA観点を分析" @onclick="() => AnalyzeQaPerspectives(node)">
+                                        @if (_isQaRunning && _targetQaNodeId == node.Id) { <span class="spinner-border spinner-border-sm"></span> }
+                                        else { <span>🧪 QA分析</span> }
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-outline-primary me-1" title="子要素を追加" @onclick="() => OpenModal(null, node.Id)">➕</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" title="編集" @onclick="() => OpenModal(node)">✎</button>
+                                <button class="btn btn-sm btn-outline-danger" title="削除" @onclick="() => DeleteNode(node)">🗑️</button>
+                            </td>
+                        </tr>
+                        if (issues.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="p-0 border-0">
+                                    <div class="alert alert-danger m-0 rounded-0 p-2 small border-start border-danger border-4 d-flex align-items-start">
+                                        <span class="fs-5 me-2">🤖</span>
+                                        <div><strong>AI指摘:</strong> @issues.First().Message</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info mt-3">データがありません。「新しいルート要求を追加」から始めてください。</div>
+    }
+</div>
+
+@* ===== 入力・編集モーダル ===== *@
+@if (_showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isNewNode ? "ノードの追加" : "ノードの編集")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">種別 (Type)</label>
+                        <select class="form-select" @bind="_formData.Type">
+                            <option value="@UsdmType.Requirement">Requirement (要求)</option>
+                            <option value="@UsdmType.Rationale">Rationale (理由)</option>
+                            <option value="@UsdmType.Specification">Specification (仕様)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">記述 (Description)</label>
+                        <textarea class="form-control" rows="3" @bind="_formData.Description"></textarea>
+                    </div>
+
+                    @if (_formData.Type == UsdmType.Specification)
+                    {
+                        <div class="card bg-light mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold text-primary">EARS コンテキスト定義</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Pattern (パターン)</label>
+                                        <select class="form-select form-select-sm" @bind="_formData.EarsContext!.Pattern">
+                                            <option value="EventDriven">Event-Driven (〜時)</option>
+                                            <option value="StateDriven">State-Driven (〜状態の間)</option>
+                                            <option value="Ubiquitous">Ubiquitous (常に)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Trigger / State (条件)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.EarsContext!.Trigger" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Actor (アクター)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.EarsContext!.Actor" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Response (振る舞い)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.EarsContext!.Response" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveModal">保存して検証</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ===== QA観点表示モーダル ===== *@
+@if (_showQaModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-shield-check"></i> 抽出されたテスト観点 (Test Perspectives)</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseQaModal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div class="alert alert-info border-0 shadow-sm">
+                        <strong>対象仕様:</strong> @_qaTargetNode?.Description
+                    </div>
+                    
+                    <div class="row row-cols-1 row-cols-md-2 g-4 mt-2">
+                        @foreach (var p in _qaPerspectives)
+                        {
+                            <div class="col">
+                                <div class="card h-100 shadow-sm border-0 border-start border-success border-4">
+                                    <div class="card-body">
+                                        <span class="badge bg-success mb-2">@p.Category</span>
+                                        <h6 class="card-title fw-bold text-dark">@p.Viewpoint</h6>
+                                        <p class="card-text text-muted small mt-2">@p.Description</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .custom-usdm-table th { font-size: 0.9rem; background-color: #f8f9fa; vertical-align: middle; }
+    .table-primary-subtle { background-color: #e7f1ff; }
+    .table-secondary-subtle { background-color: #f1f3f5; }
+    .ears-box { background: #fdfdfe; border-left: 4px solid #0d6efd; padding: 4px 8px; border-radius: 4px; }
+</style>
+
+@code {
+    private bool _isRunning = false;
+    private PipelineContext? _context;
+    private List<RequirementNode> _nodes = new();
+    private string _reqPath = "";
+    
+    // CRUD モーダル用
+    private bool _showModal = false;
+    private bool _isNewNode = false;
+    private RequirementNode _formData = new RequirementNode();
+
+    // QA分析用ステート
+    private bool _isQaRunning = false;
+    private Guid? _targetQaNodeId = null;
+    private bool _showQaModal = false;
+    private RequirementNode? _qaTargetNode;
+    private List<QaPerspective> _qaPerspectives = new();
+
+    protected override void OnInitialized()
+    {
+        _reqPath = Path.Combine(Directory.GetCurrentDirectory(), "requirements.json");
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        _nodes = Provider.Load(_reqPath).ToList();
+        _nodes = SortTree(_nodes);
+    }
+
+    private async Task RunPipeline()
+    {
+        _isRunning = true;
+        try {
+            var currentDir = Directory.GetCurrentDirectory();
+            _context = await Orchestrator.RunPipelineAsync(_reqPath, Path.Combine(currentDir, "glossary.json"), currentDir);
+            _nodes = SortTree(_context.Nodes.ToList());
+        } finally {
+            _isRunning = false;
+        }
+    }
+
+    // ===== QA観点分析の実行 =====
+    private async Task AnalyzeQaPerspectives(RequirementNode node)
+    {
+        _isQaRunning = true;
+        _targetQaNodeId = node.Id;
+        _qaTargetNode = node;
+        StateHasChanged(); // UIにスピナーを表示
+
+        try
+        {
+            var glossaryPath = Path.Combine(Directory.GetCurrentDirectory(), "glossary.json");
+            var glossary = GlossaryProvider.Load(glossaryPath);
+            _qaPerspectives = await QaGenerator.GeneratePerspectivesAsync(node, glossary);
+            _showQaModal = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"QA分析エラー: {ex.Message}");
+        }
+        finally
+        {
+            _isQaRunning = false;
+            _targetQaNodeId = null;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseQaModal() => _showQaModal = false;
+
+    // ===== 既存のモーダル操作ロジック =====
+    private void OpenModal(RequirementNode? existingNode, Guid? parentId = null)
+    {
+        _isNewNode = existingNode == null;
+        if (_isNewNode)
+        {
+            _formData = new RequirementNode
+            {
+                Id = Guid.NewGuid(),
+                ParentId = parentId,
+                Type = parentId == null ? UsdmType.Requirement : UsdmType.Specification,
+                Description = "",
+                EarsContext = new EarsContext()
+            };
+        }
+        else
+        {
+            _formData = new RequirementNode
+            {
+                Id = existingNode!.Id,
+                ParentId = existingNode.ParentId,
+                Type = existingNode.Type,
+                Description = existingNode.Description,
+                EarsContext = existingNode.EarsContext ?? new EarsContext()
+            };
+        }
+        _showModal = true;
+    }
+
+    private void CloseModal() => _showModal = false;
+
+    private async Task SaveModal()
+    {
+        if (_formData.Type != UsdmType.Specification) _formData.EarsContext = null;
+
+        if (_isNewNode) {
+            _nodes.Add(_formData);
+        } else {
+            var index = _nodes.FindIndex(n => n.Id == _formData.Id);
+            if (index >= 0) _nodes[index] = _formData;
+        }
+
+        Provider.Save(_nodes, _reqPath);
+        CloseModal();
+        LoadData();
+        await RunPipeline();
+    }
+
+    private async Task DeleteNode(RequirementNode node)
+    {
+        _nodes.RemoveAll(n => n.Id == node.Id);
+        Provider.Save(_nodes, _reqPath);
+        LoadData();
+        await RunPipeline();
+    }
+
+    private int GetLevel(RequirementNode node) {
+        int level = 0;
+        var current = node;
+        while (current?.ParentId != null) {
+            level++;
+            current = _nodes.FirstOrDefault(n => n.Id == current.ParentId);
+        }
+        return level;
+    }
+
+    private List<RequirementNode> SortTree(List<RequirementNode> allNodes)
+    {
+        var result = new List<RequirementNode>();
+        var rootNodes = allNodes.Where(n => n.ParentId == null).ToList();
+        foreach (var root in rootNodes) AddNodeAndChildren(root, allNodes, result);
+        return result;
+    }
+
+    private void AddNodeAndChildren(RequirementNode node, List<RequirementNode> allNodes, List<RequirementNode> result)
+    {
+        result.Add(node);
+        var children = allNodes.Where(n => n.ParentId == node.Id).ToList();
+        foreach (var child in children) AddNodeAndChildren(child, allNodes, result);
+    }
+
+    private string GetBadgeClass(UsdmType type) => type switch {
+        UsdmType.Requirement => "bg-primary",
+        UsdmType.Rationale => "bg-secondary",
+        _ => "bg-info text-dark"
+    };
+}

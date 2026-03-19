@@ -1,0 +1,222 @@
+@page "/glossary"
+@rendermode InteractiveServer
+
+@using System.IO
+@using ReqPipeline.Core.Models
+@using ReqPipeline.Core.Interfaces
+
+@inject IGlossaryProvider Provider
+
+<PageTitle>用語集 (Glossary) エディタ</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📚 用語集 (Bounded Contexts)</h1>
+        <button class="btn btn-primary shadow-sm" @onclick="() => OpenModal(null)">
+            ➕ 新しい用語を定義
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light fw-bold">
+                    🌐 Namespaces
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var ns in _namespaces)
+                    {
+                        var isActive = ns == _selectedNamespace ? "active" : "";
+                        var badgeBg = ns.StartsWith("SYS") ? "bg-danger" : "bg-primary";
+                        <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center cursor-pointer @isActive"
+                            @onclick="() => SelectNamespace(ns)" style="cursor: pointer;">
+                            <span>
+                                <span class="badge @badgeBg me-2">@ns.Split(':').First()</span>
+                                @ns
+                            </span>
+                            <span class="badge bg-secondary rounded-pill">
+                                @_glossary.Entries.Count(e => e.Namespace == ns)
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-primary">
+                        <i class="bi bi-folder2-open me-2"></i> Namespace: <strong>@_selectedNamespace</strong>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%">Category</th>
+                                <th style="width: 25%">Term (用語)</th>
+                                <th style="width: 40%">Definition (定義・意味)</th>
+                                <th style="width: 20%" class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in _glossary.Entries.Where(e => e.Namespace == _selectedNamespace).OrderBy(e => e.Category).ThenBy(e => e.Term))
+                            {
+                                <tr>
+                                    <td class="align-middle">
+                                        <span class="badge bg-secondary">@entry.Category</span>
+                                    </td>
+                                    <td class="align-middle fw-bold">@entry.Term</td>
+                                    <td class="align-middle text-muted small">@entry.Definition</td>
+                                    <td class="align-middle text-center">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenModal(entry)">✎ 編集</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteEntry(entry)">🗑️</button>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!_glossary.Entries.Any(e => e.Namespace == _selectedNamespace))
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        このネームスペースにはまだ用語がありません。
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ===== 入力・編集モーダル ===== *@
+@if (_showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isNew ? "用語の追加" : "用語の編集")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Namespace (スコープ)</label>
+                        <input type="text" class="form-control" @bind="_formData.Namespace" list="namespace-options" placeholder="例: SYS, SW:LKAS" />
+                        <datalist id="namespace-options">
+                            @foreach (var ns in _namespaces) { <option value="@ns" /> }
+                        </datalist>
+                        <div class="form-text">システム全体なら「SYS」、特定機能なら「SW:機能名」を推奨します。</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category (種類)</label>
+                        <select class="form-select" @bind="_formData.Category">
+                            @foreach (var cat in Enum.GetValues<GlossaryCategory>())
+                            {
+                                <option value="@cat">@cat</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Term (用語)</label>
+                        <input type="text" class="form-control" @bind="_formData.Term" placeholder="例: Emergency_Event" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Definition (定義・意味)</label>
+                        <textarea class="form-control" rows="3" @bind="_formData.Definition" placeholder="用語の明確な定義を記述してください"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveModal">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Glossary _glossary = new();
+    private List<string> _namespaces = new();
+    private string _selectedNamespace = "SYS";
+    private string _path = "";
+
+    // モーダル用
+    private bool _showModal = false;
+    private bool _isNew = false;
+    private GlossaryEntry _formData = new();
+
+    protected override void OnInitialized()
+    {
+        _path = Path.Combine(Directory.GetCurrentDirectory(), "glossary.json");
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        _glossary = Provider.Load(_path);
+        
+        // 既存のネームスペース一覧を抽出（もし空ならSYSを入れる）
+        _namespaces = _glossary.Entries.Select(e => e.Namespace).Distinct().OrderBy(n => n).ToList();
+        if (!_namespaces.Any()) _namespaces.Add("SYS");
+        
+        if (!_namespaces.Contains(_selectedNamespace))
+        {
+            _selectedNamespace = _namespaces.FirstOrDefault() ?? "SYS";
+        }
+    }
+
+    private void SelectNamespace(string ns) => _selectedNamespace = ns;
+
+    private void OpenModal(GlossaryEntry? existing)
+    {
+        _isNew = existing == null;
+        if (_isNew)
+        {
+            _formData = new GlossaryEntry { Namespace = _selectedNamespace };
+        }
+        else
+        {
+            _formData = new GlossaryEntry
+            {
+                Id = existing!.Id,
+                Namespace = existing.Namespace,
+                Category = existing.Category,
+                Term = existing.Term,
+                Definition = existing.Definition
+            };
+        }
+        _showModal = true;
+    }
+
+    private void CloseModal() => _showModal = false;
+
+    private void SaveModal()
+    {
+        if (string.IsNullOrWhiteSpace(_formData.Namespace)) _formData.Namespace = "SYS";
+
+        if (_isNew) {
+            _glossary.Entries.Add(_formData);
+        } else {
+            var index = _glossary.Entries.FindIndex(e => e.Id == _formData.Id);
+            if (index >= 0) _glossary.Entries[index] = _formData;
+        }
+
+        Provider.Save(_glossary, _path);
+        LoadData();
+        _selectedNamespace = _formData.Namespace; // 保存したネームスペースを選択状態にする
+        CloseModal();
+    }
+
+    private void DeleteEntry(GlossaryEntry entry)
+    {
+        _glossary.Entries.RemoveAll(e => e.Id == entry.Id);
+        Provider.Save(_glossary, _path);
+        LoadData();
+    }
+}

@@ -1,0 +1,6 @@
+[
+  { "term": "認証サーバ", "category": "Actor", "definition": "セキュリティに関する認証システム" },
+  { "term": "パスワードの入力ミス回数を無視する", "category": "Action", "definition": "ユーザー操作のミスを無視する" },
+  { "term": "ログイン失敗時", "category": "Object", "definition": "ユーザーがシステムにアクセスするときの失敗した状態" },
+  { "term": "アカウントをロックする", "category": "Action", "definition": "ユーザーアカウントをロックする" }
+]

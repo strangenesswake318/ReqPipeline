@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ReqPipeline.Api/ReqPipeline.Api.csproj" />
+    <Project Path="src/ReqPipeline.Core/ReqPipeline.Core.csproj" />
+    <Project Path="src/ReqPipeline.Linter/ReqPipeline.Linter.csproj" />
+    <Project Path="src/ReqPipeline.Web/ReqPipeline.Web.csproj" />
+  </Folder>
+</Solution>

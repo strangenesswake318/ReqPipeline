@@ -1,0 +1,24 @@
+{
+  "project": "ReqPipeline",
+  "version": "1.0",
+  "entries": [
+    {
+      "term": "認証サーバー",
+      "category": "Actor",
+      "definition": "ユーザー情報を照合するシステム要素",
+      "allowedEarsFields": ["actor"]
+    },
+    {
+      "term": "検証する",
+      "category": "Action",
+      "definition": "入力データと期待値の整合性を確認する",
+      "allowedEarsFields": ["response"]
+    },
+    {
+      "term": "ログインID",
+      "category": "Object",
+      "definition": "ユーザーを一意に識別する文字列",
+      "allowedEarsFields": ["trigger", "response"]
+    }
+  ]
+}
