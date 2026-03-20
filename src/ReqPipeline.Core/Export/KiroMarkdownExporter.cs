@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using ReqPipeline.Core.Models;
 
 namespace ReqPipeline.Core.Export;
@@ -8,54 +9,45 @@ public class KiroMarkdownExporter : IRequirementExporter
 {
     public void Export(string featureName, IEnumerable<RequirementNode> nodes, string outputDirectory)
     {
-        // 出力先ディレクトリの確保（例: .kiro/specs/auth）
         var targetDir = Path.Combine(outputDirectory, ".kiro", "specs", featureName);
         Directory.CreateDirectory(targetDir);
+        using var writer = new StreamWriter(Path.Combine(targetDir, "requirements.md"));
 
-        var filePath = Path.Combine(targetDir, "requirements.md");
-        using var writer = new StreamWriter(filePath);
+        writer.WriteLine($"# Feature: {featureName}\n\n## Requirements Tree\n");
 
-        writer.WriteLine($"# Feature: {featureName}");
-        writer.WriteLine("");
-        writer.WriteLine();
-        writer.WriteLine("## Requirements Tree");
-        writer.WriteLine();
-
-        // ルートノード（ParentIdがnullのRequirement）から再帰的に書き出す
-        var rootNodes = nodes.Where(n => n.ParentId == null && n.Type == UsdmType.Requirement);
-        foreach (var root in rootNodes)
-        {
-            WriteNode(writer, root, nodes.ToList(), 0);
-        }
+        // ルートを ParentRequirement に変更
+        var rootNodes = nodes.Where(n => n.ParentId == null && n.Type == UsdmType.ParentRequirement);
+        foreach (var root in rootNodes) WriteNode(writer, root, nodes.ToList(), 0);
     }
 
     private void WriteNode(StreamWriter writer, RequirementNode node, List<RequirementNode> allNodes, int depth)
     {
         var indent = new string(' ', depth * 2);
-        
-        // AIがパースしやすいようにタグ付け
-        string prefix = node.Type switch
-        {
-            UsdmType.Requirement => "- **[REQ]**",
-            UsdmType.Rationale => "- *[RAT]*",
-            UsdmType.Specification => "- **[SPEC]**",
+        string prefix = node.Type switch {
+            UsdmType.ParentRequirement => "- **[EPIC]**",
+            UsdmType.Rationale => "- *[WHY]*",
+            UsdmType.ChildRequirement => "- **[SCENARIO]**",
+            UsdmType.Specification => "- **[RULE]**",
             _ => "-"
         };
 
         writer.WriteLine($"{indent}{prefix} {node.Description}");
 
-        // 仕様(Specification)の場合は、EARSの構造化データもAI向けに出力
-        if (node.Type == UsdmType.Specification && node.EarsContext != null && node.EarsContext.Pattern != "None")
+        // 子要求(Gherkin)の出力
+        if (node.Type == UsdmType.ChildRequirement && node.GherkinContext != null)
         {
-            var ctx = node.EarsContext;
-            var earsIndent = new string(' ', (depth + 1) * 2);
-            // 例: > Pattern: EventDriven | When: ログインボタン押下 | Actor: 認証サーバ | Response: 検証する
-            writer.WriteLine($"{earsIndent}> **EARS:** `{ctx.Pattern}` | **When:** {ctx.Trigger} | **Actor:** {ctx.Actor} | **Response:** {ctx.Response}");
+            var ctx = node.GherkinContext;
+            writer.WriteLine($"{indent}  > **BDD:** Given `{ctx.Given}` | When `{ctx.When}` | Then `{ctx.Then}`");
         }
 
-        // 子ノードの再帰処理
-        var children = allNodes.Where(n => n.ParentId == node.Id).ToList();
-        foreach (var child in children)
+        // 仕様(EARS)の出力
+        if (node.Type == UsdmType.Specification && node.EarsContext != null)
+        {
+            var ctx = node.EarsContext;
+            writer.WriteLine($"{indent}  > **EARS:** `[{ctx.Pattern}]` | Trigger: `{ctx.Trigger}` | Actor: `{ctx.Actor}` | Response: `{ctx.Response}`");
+        }
+
+        foreach (var child in allNodes.Where(n => n.ParentId == node.Id))
         {
             WriteNode(writer, child, allNodes, depth + 1);
         }
