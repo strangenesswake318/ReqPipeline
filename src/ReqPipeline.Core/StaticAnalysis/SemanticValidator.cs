@@ -115,31 +115,51 @@ public class SemanticValidator : IRequirementStaticAnalysis
         }
     }
 
+    // ==========================================
+    // 💡 4層構造対応 ＆ AIの脳内階層逆転
+    // ==========================================
     private string BuildTreeText(IEnumerable<RequirementNode> nodes)
     {
         var sb = new StringBuilder();
-        var reqs = nodes.Where(n => n.Type == UsdmType.Requirement);
         
-        foreach (var req in reqs)
+        // 1. Validationの頂点である「理由」からスタートする
+        var rationales = nodes.Where(n => n.Type == UsdmType.Rationale).ToList();
+        
+        foreach (var rat in rationales)
         {
-            sb.AppendLine($"- [要求] {req.Description}");
-            var rats = nodes.Where(n => n.ParentId == req.Id && n.Type == UsdmType.Rationale);
+            // 理由の親である「親要求（Epic）」を取得
+            var parentReq = nodes.FirstOrDefault(n => n.Id == rat.ParentId);
             
-            foreach (var rat in rats)
+            sb.AppendLine($"【達成すべき目的 (Validation基準)】");
+            sb.AppendLine($"- [理由] {rat.Description}");
+            if (parentReq != null)
             {
-                sb.AppendLine($"  - [理由] {rat.Description}");
-                var specs = nodes.Where(n => n.ParentId == rat.Id && n.Type == UsdmType.Specification);
-                
+                sb.AppendLine($"  (背景となる親要求: {parentReq.Description})");
+            }
+            sb.AppendLine($"  【上記目的を達成するための振る舞いと制約】");
+
+            // 理由にぶら下がる「子要求(Gherkin)」を取得
+            var childReqs = nodes.Where(n => n.ParentId == rat.Id && n.Type == UsdmType.ChildRequirement).ToList();
+            foreach (var child in childReqs)
+            {
+                sb.AppendLine($"  - [子要求] {child.Description}");
+                if (child.GherkinContext != null)
+                {
+                    sb.AppendLine($"    (BDD: Given {child.GherkinContext.Given}, When {child.GherkinContext.When}, Then {child.GherkinContext.Then})");
+                }
+
+                // 子要求にぶら下がる「仕様(EARS)」を取得
+                var specs = nodes.Where(n => n.ParentId == child.Id && n.Type == UsdmType.Specification).ToList();
                 foreach (var spec in specs)
                 {
                     sb.AppendLine($"    - [仕様] {spec.Description}");
-                    // 💡 仕様のEARSコンテキストもAIに読ませるように追記
                     if (spec.EarsContext != null)
                     {
                         sb.AppendLine($"      (EARS: [{spec.EarsContext.Pattern}] Trigger: {spec.EarsContext.Trigger}, Actor: {spec.EarsContext.Actor}, Response: {spec.EarsContext.Response})");
                     }
                 }
             }
+            sb.AppendLine();
         }
         return sb.ToString();
     }

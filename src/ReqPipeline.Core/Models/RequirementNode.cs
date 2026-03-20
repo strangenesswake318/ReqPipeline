@@ -9,6 +9,9 @@ public class RequirementNode
     public string Description { get; set; } = string.Empty;
     public EarsContext? EarsContext { get; set; }
 
+    public GherkinContext? GherkinContext { get; set; }
+
+
     // パラメーターなしコンストラクター（重要：Blazorやシリアライザ用）
     public RequirementNode() { }
 
