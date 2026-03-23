@@ -5,4 +5,7 @@
     <Project Path="src/ReqPipeline.Linter/ReqPipeline.Linter.csproj" />
     <Project Path="src/ReqPipeline.Web/ReqPipeline.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ReqPipeline.UnitTests/ReqPipeline.UnitTests.csproj" />
+  </Folder>
 </Solution>
