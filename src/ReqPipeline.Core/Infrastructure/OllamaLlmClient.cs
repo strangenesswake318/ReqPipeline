@@ -5,6 +5,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ReqPipeline.Core.Interfaces;
+using System.IO; // Path や File のため
+using System.Text.Json.Serialization; // ReferenceHandler のため
+using ReqPipeline.Core.Models; // PipelineContext のため
 
 namespace ReqPipeline.Core.Infrastructure;
 
@@ -18,6 +21,32 @@ public class OllamaLlmClient : ILlmClient
     public OllamaLlmClient(string modelName = "qwen2.5:7b")
     {
         _modelName = modelName;
+    }
+
+    // 【追加】山本メソッドRAG用のレビューメソッド
+    public async Task<string> ReviewWithKnowledgeAsync(PipelineContext context, string knowledge)
+    {
+        // 1. 先ほど作った RAG 用のプロンプトテンプレートを読み込む
+        var promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "SystemReviewPrompt.md");
+        var promptTemplate = await File.ReadAllTextAsync(promptPath);
+
+        // 2. 要求仕様（ツリー構造）をAIが読めるようにJSON文字列化する
+        // ※ノードの親子関係による「循環参照エラー」を防ぐための魔法の設定です
+        var jsonOptions = new JsonSerializerOptions 
+        { 
+            WriteIndented = true,
+            ReferenceHandler = ReferenceHandler.IgnoreCycles 
+        };
+        var requirementsJson = JsonSerializer.Serialize(context.Nodes, jsonOptions);
+
+        // 3. プレースホルダーに「山本メソッドの知見」と「要求仕様」をガッチャンコ！
+        var finalPrompt = promptTemplate
+            .Replace("{{KnowledgeBase}}", knowledge)
+            .Replace("{{Requirements}}", requirementsJson);
+
+        // 4. 完成したプロンプトを、既存の激ツヨメソッド（GenerateTextAsync）に投げる！
+        // レビューなので、temperature は 0.0f (最も堅実で論理的な回答) を指定します
+        return await GenerateTextAsync(finalPrompt, 0.0f);
     }
 
     public async Task<string> GenerateTextAsync(string prompt, float temperature = 0.0f)

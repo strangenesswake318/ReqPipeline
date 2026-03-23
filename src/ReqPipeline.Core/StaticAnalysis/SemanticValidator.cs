@@ -58,36 +58,16 @@ public class SemanticValidator : IRequirementStaticAnalysis
                 glossaryMd.AppendLine($"- **{entry.FullName}** ({entry.Category}): {entry.Definition}");
             }
         }
-        // ==========================================
+        
 
-        var prompt = $@"
-あなたは要求工学とUSDMの専門家です。以下の【要求ツリー】を読み、意味論的な「矛盾」や「目的と手段の不一致」を厳格にValidation（妥当性確認）してください。
-業務ドメインの知識（その仕様がビジネスとして正しいか）は推測せず、あくまで「テキスト間の論理的な整合性」と「ドメイン知識（用語集）」を元に評価してください。
+        // 1. プロンプトのテンプレートファイルを読み込む
+        var promptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", "SemanticValidationPrompt.md");
+        var promptTemplate = await File.ReadAllTextAsync(promptPath);
 
-{glossaryMd}
-
-【Validationの採点基準】
-1. IntentMismatch (目的と手段の不一致)
-   親ノードである「[理由]」が示唆する方向性と、子ノードである「[仕様]」の振る舞いが、意味的に逆行または乖離していませんか？
-2. SpecificationConflict (仕様間の衝突)
-   同じツリー内に存在する複数の「[仕様]」間で、同じトリガー（条件）に対する振る舞いが矛盾・衝突していませんか？
-
-【要求ツリー】
-{treeText}
-
-【出力要件】
-・矛盾や不一致がない場合は issues を空の配列にしてください。
-・必ず対象となるノードの具体的な文章を引用して指摘してください。一般論は禁止です。
-・以下のJSONスキーマに従って出力してください。
-{{
-  ""issues"": [
-    {{
-      ""ruleId"": ""IntentMismatch または SpecificationConflict"",
-      ""message"": ""対象の文章を引用し、なぜ矛盾・不一致しているのか論理的に説明してください。"",
-      ""severity"": ""Warning""
-    }}
-  ]
-}}";
+        // 2. プレースホルダー（{{...}}）を実際の変数（glossaryMd, treeText）に置換する
+        var prompt = promptTemplate
+            .Replace("{{GlossaryMd}}", glossaryMd.ToString())
+            .Replace("{{TreeText}}", treeText.ToString());
 
         try
         {
