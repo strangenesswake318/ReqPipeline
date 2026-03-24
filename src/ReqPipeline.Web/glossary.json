@@ -40,11 +40,11 @@
     {
       "Id": "9bf13bfb-8313-4497-8f3d-5932efba0e9c",
       "Namespace": "SW:Auth",
-      "Term": "入力ミスを無視する",
+      "Term": "適切に入力ミスを無視する",
       "Category": 1,
       "Definition": "パスワードの入力ミス回数をカウントせず無視する。",
       "AllowedEarsFields": null,
-      "FullName": "[SW:Auth:入力ミスを無視する]"
+      "FullName": "[SW:Auth:適切に入力ミスを無視する]"
     }
   ]
 }

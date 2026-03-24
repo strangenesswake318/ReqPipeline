@@ -2,6 +2,7 @@ using ReqPipeline.Web.Components;
 using ReqPipeline.Core.Application;
 using ReqPipeline.Core.StaticAnalysis;
 using ReqPipeline.Core.Interfaces;
+using ReqPipeline.Core.KnowledgeBase;
 using ReqPipeline.Core.Models;
 using ReqPipeline.Core.Infrastructure;
 using ReqPipeline.Core.Export;
@@ -25,20 +26,28 @@ builder.Services.AddScoped<IGlossaryProvider, JsonGlossaryProvider>();
 // インスタンス化の際にモデル名を渡すようファクトリ形式で登録します
 builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient("qwen2.5:7b"));
 
-// 3. バリデーター群 (順番が重要！)
+// 3. ナレッジベースの登録（MarkdownKnowledgeBaseを実体として使う）
+// 実行ファイルのディレクトリにある "Knowledge" フォルダを指定して生成する
+builder.Services.AddScoped<IKnowledgeBase>(sp => 
+{
+    var kbPath = Path.Combine(AppContext.BaseDirectory, "Knowledge");
+    return new MarkdownKnowledgeBase(kbPath);
+});
+
+// 4. バリデーター群 (順番が重要！)
 // ※ASP.NET CoreのDIは、同じインターフェースで複数登録すると IEnumerable<T> としてまとめて注入してくれます
 builder.Services.AddScoped<IRequirementStaticAnalysis, StructureVerifier>();
 builder.Services.AddScoped<IRequirementStaticAnalysis, GlossaryVerifier>();
 builder.Services.AddScoped<IRequirementStaticAnalysis, SemanticValidator>();
 
-// 4. エクスポーター群
+// 5. エクスポーター群
 builder.Services.AddScoped<IRequirementExporter, KiroMarkdownExporter>();
 builder.Services.AddScoped<IRequirementExporter, UsdmCsvExporter>();
 
-// 5. すべてを束ねるオーケストレーター
+// 6. すべてを束ねるオーケストレーター
 builder.Services.AddScoped<PipelineOrchestrator>();
 
-// 6. QA用
+// 7. QA用
 builder.Services.AddScoped<ReqPipeline.Core.QaIntegration.AiQaPerspectiveGenerator>();
 // ========================================================
 

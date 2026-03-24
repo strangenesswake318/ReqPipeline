@@ -39,5 +39,18 @@
       "Response": "アカウントをロックする"
     },
     "GherkinContext": null
+  },
+  {
+    "Id": "4f925fd6-2286-417f-88f2-b1664e60483f",
+    "ParentId": "69b7167b-46bb-4dbd-8891-099cae86e5ef",
+    "Type": 3,
+    "Description": "ログイン失敗時、認証サーバは適切に入力ミスを無視する。",
+    "EarsContext": {
+      "Pattern": "EventDriven",
+      "Trigger": "ログイン失敗時",
+      "Actor": "認証サーバ",
+      "Response": "適切に入力ミスを無視する"
+    },
+    "GherkinContext": null
   }
 ]

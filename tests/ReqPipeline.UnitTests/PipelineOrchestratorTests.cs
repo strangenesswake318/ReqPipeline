@@ -19,6 +19,7 @@ public class PipelineOrchestratorTests
         // Arrange (準備)
         var mockReqProvider = new Mock<IRequirementProvider>();
         var mockGlosProvider = new Mock<IGlossaryProvider>();
+        var mockKB = new Mock<IKnowledgeBase>();
         var mockAnalyzer = new Mock<IRequirementStaticAnalysis>();
         var mockExporter = new Mock<IRequirementExporter>();
 
@@ -26,11 +27,19 @@ public class PipelineOrchestratorTests
         mockReqProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new List<RequirementNode>());
         mockGlosProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new Glossary { Project = "Test", Entries = new List<GlossaryEntry>() });
 
+        // 2. Arrange の部分に影武者を追加
+        var mockLlmClient = new Mock<ILlmClient>();
+        mockLlmClient
+            .Setup(x => x.ReviewWithKnowledgeAsync(It.IsAny<PipelineContext>(), It.IsAny<string>()))
+            .ReturnsAsync("[]"); // テスト中は空のJSON配列を返すように仕込む
+
         var orchestrator = new PipelineOrchestrator(
             mockReqProvider.Object,
             mockGlosProvider.Object,
+            mockKB.Object,
             new List<IRequirementStaticAnalysis> { mockAnalyzer.Object },
-            new List<IRequirementExporter> { mockExporter.Object }
+            new List<IRequirementExporter> { mockExporter.Object },
+            mockLlmClient.Object
         );
 
         // Act (実行)
@@ -48,11 +57,18 @@ public class PipelineOrchestratorTests
         // Arrange
         var mockReqProvider = new Mock<IRequirementProvider>();
         var mockGlosProvider = new Mock<IGlossaryProvider>();
+        var mockKB = new Mock<IKnowledgeBase>();
         var mockAnalyzer = new Mock<IRequirementStaticAnalysis>();
         var mockExporter = new Mock<IRequirementExporter>();
 
         mockReqProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new List<RequirementNode>());
         mockGlosProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new Glossary { Project = "Test", Entries = new List<GlossaryEntry>() });
+
+        // 1. Arrange の部分に影武者を追加
+        var mockLlmClient = new Mock<ILlmClient>();
+        mockLlmClient
+            .Setup(x => x.ReviewWithKnowledgeAsync(It.IsAny<PipelineContext>(), It.IsAny<string>()))
+            .ReturnsAsync("[]"); // テスト中は空のJSON配列を返すように仕込む
 
         // 💡 2. 影武者のLinter（Analyzer）が動いた瞬間に、意図的に致命的エラーをコンテキストに混入させる！
         mockAnalyzer.Setup(x => x.ValidateAsync(It.IsAny<PipelineContext>()))
@@ -66,8 +82,10 @@ public class PipelineOrchestratorTests
         var orchestrator = new PipelineOrchestrator(
             mockReqProvider.Object,
             mockGlosProvider.Object,
+            mockKB.Object,
             new List<IRequirementStaticAnalysis> { mockAnalyzer.Object },
-            new List<IRequirementExporter> { mockExporter.Object }
+            new List<IRequirementExporter> { mockExporter.Object },
+            mockLlmClient.Object
         );
 
         // Act
