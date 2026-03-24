@@ -8,7 +8,7 @@ namespace ReqPipeline.Core.StaticAnalysis;
 public class StructureVerifier : IRequirementStaticAnalysis
 {
     // 💡 インターフェースの約束通り ValidateAsync に変更
-    public Task ValidateAsync(PipelineContext context)
+    public virtual Task ValidateAsync(PipelineContext context)
     {
         var nodes = context.Nodes.ToList();
         var nodeDictionary = nodes.ToDictionary(n => n.Id);

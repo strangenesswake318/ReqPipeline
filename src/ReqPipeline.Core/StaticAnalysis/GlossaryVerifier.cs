@@ -12,7 +12,7 @@ public class GlossaryVerifier : IRequirementStaticAnalysis
 {
     
     // 💡戻り値でListを返すのではなく、Taskを返しつつ context に Issue を直接追加する設計
-    public Task ValidateAsync(PipelineContext context)
+    public virtual Task ValidateAsync(PipelineContext context)
     {
 
         // 💡 1. そもそもこのLinterが呼ばれているか？

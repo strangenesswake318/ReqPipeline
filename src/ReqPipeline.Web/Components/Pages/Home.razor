@@ -11,6 +11,10 @@
 @inject IRequirementProvider Provider
 @inject IGlossaryProvider GlossaryProvider
 @inject AiQaPerspectiveGenerator QaGenerator
+@inject IRequirementProvider ReqProvider
+@inject IGlossaryProvider GlosProvider
+
+
 
 <PageTitle>USDM Editor & Viewer</PageTitle>
 
@@ -299,7 +303,18 @@
         _isRunning = true;
         try {
             var currentDir = Directory.GetCurrentDirectory();
-            _context = await Orchestrator.RunPipelineAsync(_reqPath, Path.Combine(currentDir, "glossary.json"), currentDir);
+            
+            // 💡 修正：プレースホルダーを実際のパスに書き換え！
+            var reqPath = Path.Combine(currentDir, "requirements.json");
+            var glosPath = Path.Combine(currentDir, "glossary.json");
+            
+            var loadedNodes = ReqProvider.Load(reqPath);
+            var loadedGlossary = GlosProvider.Load(glosPath);
+
+            // 読み込んだデータでコンテキストを作り、Orchestratorに渡す
+            _context = new PipelineContext(loadedNodes, loadedGlossary);
+            await Orchestrator.RunPipelineAsync(_context);
+
             _nodes = SortTree(_context.Nodes.ToList());
         } finally {
             _isRunning = false;

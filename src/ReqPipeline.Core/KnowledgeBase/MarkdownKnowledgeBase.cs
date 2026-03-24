@@ -1,6 +1,8 @@
 using System.Text;
 using ReqPipeline.Core.Interfaces;
 using ReqPipeline.Core.Models;
+using ReqPipeline.Core.Utils;
+
 
 namespace ReqPipeline.Core.KnowledgeBase;
 
@@ -15,18 +17,19 @@ public class MarkdownKnowledgeBase : IKnowledgeBase
 
     public async Task<string> GetRelevantKnowledgeAsync(PipelineContext context)
     {
-        if (!Directory.Exists(_knowledgeDirectory))
+        // 💡 呪文を唱えるだけで、どこにあっても絶対に見つけてくる！
+        var folderName = new DirectoryInfo(_knowledgeDirectory).Name;
+        var targetDir = ResourceLocator.FindDirectory(folderName);
+
+        if (!Directory.Exists(targetDir))
         {
-            return "※ナレッジベースのディレクトリが見つかりません。";
+            return $"※ナレッジベースが見つかりません。(探したフォルダ名: {folderName})";
         }
 
         var sb = new StringBuilder();
         sb.AppendLine("# 山本修一郎先生の要求工学ナレッジ（参考資料）");
 
-        // ディレクトリ内のすべてのMarkdownファイルを読み込む
-        // 将来的には、context.Issues の内容に応じて読み込むファイルを選別する「セマンティック検索」に進化させます
-        var files = Directory.GetFiles(_knowledgeDirectory, "*.md");
-        
+        var files = Directory.GetFiles(targetDir, "*.md");
         foreach (var file in files)
         {
             var content = await File.ReadAllTextAsync(file);
