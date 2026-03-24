@@ -51,7 +51,12 @@
                             _ => "bg-white"
                         };
                         var indent = node.ParentId == null ? 0 : (GetLevel(node) * 1.5);
-                        var issues = _context?.Issues.Where(i => i.Message.Contains(node.Description)).ToList() ?? new();
+                        //var issues = _context?.Issues.Where(i => i.Message.Contains(node.Description)).ToList() ?? new();
+
+                        // 💡 メッセージのテキスト比較をやめて、ID（大文字小文字無視）で確実に紐付ける
+                        var issues = _context?.Issues.Where(i => 
+                            string.Equals(i.TargetNodeId, node.Id.ToString(), StringComparison.OrdinalIgnoreCase)
+                        ).ToList() ?? new();
 
                         <tr class="@rowClass">
                             <td class="align-middle text-center"><span class="badge @GetBadgeClass(node.Type)">@node.Type</span></td>

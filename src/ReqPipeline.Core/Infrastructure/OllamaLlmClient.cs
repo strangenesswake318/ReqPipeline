@@ -44,6 +44,20 @@ public class OllamaLlmClient : ILlmClient
             .Replace("{{KnowledgeBase}}", knowledge)
             .Replace("{{Requirements}}", requirementsJson);
 
+            // 💡 3-1. AIに送る直前の「完全体プロンプト」をターミナルに表示！
+            Console.WriteLine("======================================");
+            Console.WriteLine("🚀 【AI送信プロンプト】");
+            Console.WriteLine(finalPrompt);
+            Console.WriteLine("======================================");
+
+            var rawResponse = await GenerateTextAsync(finalPrompt, 0.0f);
+
+            // 💡 3-2. AIから返ってきた「生の回答」をターミナルに表示！
+            Console.WriteLine("======================================");
+            Console.WriteLine("🤖 【AI生レスポンス】");
+            Console.WriteLine(rawResponse);
+            Console.WriteLine("======================================");
+
         // 4. 完成したプロンプトを、既存の激ツヨメソッド（GenerateTextAsync）に投げる！
         // レビューなので、temperature は 0.0f (最も堅実で論理的な回答) を指定します
         return await GenerateTextAsync(finalPrompt, 0.0f);

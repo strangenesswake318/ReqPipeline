@@ -79,32 +79,54 @@ public class PipelineOrchestrator
 
         try
         {
-            // 大文字小文字を無視して柔軟にJSONを読み込む
+            // 💡 1. AIが混入させる「見えないゴミ文字（ノーブレークスペース等）」を徹底除去！
+            jsonString = jsonString.Replace("\u00A0", " ").Trim();
+
+            // 💡 2. 単一オブジェクトで来た場合の救済パッチ
+            if (jsonString.StartsWith("{") && jsonString.EndsWith("}"))
+            {
+                jsonString = "[" + jsonString + "]";
+            }
+
+            // 💡 3. 何をパースしようとしているか、コンソールに丸裸で出す！
+            Console.WriteLine($"\n🔍 【パース直前のJSON】:\n{jsonString}");
+
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var aiIssues = JsonSerializer.Deserialize<List<AiIssueDto>>(jsonString, options);
 
             if (aiIssues != null)
             {
+                // 💡 4. 無事にパースできたか結果を表示！
+                Console.WriteLine($"✅ 【パース成功】: {aiIssues.Count} 件のIssueをContextに追加します！");
+                
                 foreach (var dto in aiIssues)
                 {
-                    // 文字列の "Warning" や "Error" を Enum に変換（失敗したらWarning）
                     var severity = Enum.TryParse<Severity>(dto.Severity, true, out var parsedSeverity)
                         ? parsedSeverity
                         : Severity.Warning;
 
-                    // コンテキストにIssueを追加！
-                    context.AddIssue(new RequirementIssue(
-                        dto.RuleId ?? "AI-REVIEW-000",
-                        dto.Message ?? "AIからの指摘事項があります。",
-                        severity,
-                        dto.NodeId ?? "Unknown"
-                    ));
+                    // var severity = Severity.Error;
+
+                    var issue = new RequirementIssue(
+                        RuleId: dto.RuleId ?? "AI-REVIEW-000",
+                        Message: dto.Message ?? "AIからの指摘事項があります。",
+                        Severity:severity,
+                        TargetNodeId:dto.NodeId ?? "Unknown"
+                    );
+                    context.AddIssue(issue);
+                                      
+                    Console.WriteLine($"   -> 登録完了: [{issue.RuleId}] NodeId={dto.NodeId}");
+
+                    // 💡 【ここを追加！】ツリーの中に同じIDのノードが存在するかどうかを大文字小文字無視で検索！
+                    // ※ n.Id が Guid 型の場合は n.Id.ToString() にしてください。もし string 型ならそのまま n.Id でOKです。
+                    var nodeExists = context.Nodes.Any(n => n.Id.ToString().Equals(dto.NodeId, StringComparison.OrdinalIgnoreCase));
+                    Console.WriteLine($"   -> 🔍 ツリー内にこのIDのノードは実在するか？: {nodeExists}");
                 }
             }
         }
-        catch (JsonException ex)
+        catch (Exception ex) // 💡 JsonException以外も全部捕まえる！
         {
-            // AIがJSON以外の謎のフォーマットを返してきた場合の安全網（フェールセーフ）
+            Console.WriteLine($"❌ 【パース大失敗】: {ex.Message}");
             context.AddIssue(new RequirementIssue("SYS-AI-ERR", $"AIの応答解析に失敗しました: {ex.Message}", Severity.Warning, "Pipeline"));
         }
     }
