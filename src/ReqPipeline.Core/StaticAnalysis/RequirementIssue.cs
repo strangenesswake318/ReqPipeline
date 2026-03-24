@@ -6,5 +6,6 @@ public record RequirementIssue(
     string RuleId, 
     string Message, 
     Severity Severity, 
-    string? Suggestion = null
+    string? Suggestion = null,
+    string? TargetNodeId = null
 );

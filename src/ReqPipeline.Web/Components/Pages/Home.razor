@@ -11,6 +11,10 @@
 @inject IRequirementProvider Provider
 @inject IGlossaryProvider GlossaryProvider
 @inject AiQaPerspectiveGenerator QaGenerator
+@inject IRequirementProvider ReqProvider
+@inject IGlossaryProvider GlosProvider
+
+
 
 <PageTitle>USDM Editor & Viewer</PageTitle>
 
@@ -45,19 +49,41 @@
                     @foreach (var node in _nodes)
                     {
                         var rowClass = node.Type switch {
-                            UsdmType.Requirement => "table-primary-subtle fw-bold",
+                            UsdmType.ParentRequirement => "table-primary-subtle fw-bold",
                             UsdmType.Rationale => "table-secondary-subtle fst-italic",
+                            UsdmType.ChildRequirement => "table-info-subtle",
                             _ => "bg-white"
                         };
                         var indent = node.ParentId == null ? 0 : (GetLevel(node) * 1.5);
-                        var issues = _context?.Issues.Where(i => i.Message.Contains(node.Description)).ToList() ?? new();
+                        //var issues = _context?.Issues.Where(i => i.Message.Contains(node.Description)).ToList() ?? new();
+
+                        // 💡 メッセージのテキスト比較をやめて、ID（大文字小文字無視）で確実に紐付ける
+                        var issues = _context?.Issues.Where(i => 
+                            string.Equals(i.TargetNodeId, node.Id.ToString(), StringComparison.OrdinalIgnoreCase)
+                        ).ToList() ?? new();
 
                         <tr class="@rowClass">
                             <td class="align-middle text-center"><span class="badge @GetBadgeClass(node.Type)">@node.Type</span></td>
                             <td class="align-middle">
                                 <div style="margin-left: @(indent)rem;">
-                                    @if (node.Type == UsdmType.Requirement) { <span class="fs-6">@node.Description</span> }
-                                    else { @node.Description }
+                                    @if (node.Type == UsdmType.ParentRequirement) 
+                                    { 
+                                        <span class="fs-6 fw-bold">@node.Description</span> 
+                                    }
+                                    else 
+                                    { 
+                                        @node.Description 
+                                    }
+
+                                    @* 子要求(Gherkin)の場合は、その下にBDDのシナリオを表示 *@
+                                    @if (node.Type == UsdmType.ChildRequirement && node.GherkinContext != null)
+                                    {
+                                        <div class="mt-1 small text-muted p-1 bg-light border rounded">
+                                            <strong>Given</strong> @node.GherkinContext.Given<br/>
+                                            <strong>When</strong> @node.GherkinContext.When<br/>
+                                            <strong>Then</strong> @node.GherkinContext.Then
+                                        </div>
+                                    }
                                 </div>
                             </td>
                             <td class="align-middle">
@@ -126,8 +152,9 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">種別 (Type)</label>
                         <select class="form-select" @bind="_formData.Type">
-                            <option value="@UsdmType.Requirement">Requirement (要求)</option>
+                            <option value="@UsdmType.ParentRequirement">Requirement (要求)</option>
                             <option value="@UsdmType.Rationale">Rationale (理由)</option>
+                            <option value="@UsdmType.ChildRequirement">Child Requirement (子要求)</option>
                             <option value="@UsdmType.Specification">Specification (仕様)</option>
                         </select>
                     </div>
@@ -137,7 +164,29 @@
                         <textarea class="form-control" rows="3" @bind="_formData.Description"></textarea>
                     </div>
 
-                    @if (_formData.Type == UsdmType.Specification)
+                    @if (_formData.Type == UsdmType.ChildRequirement)
+                    {
+                        <div class="card bg-info-subtle mt-3 border-info">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold text-info-emphasis">BDD コンテキスト (Gherkin)</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-12">
+                                        <label class="form-label small">Given (前提状態)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.GherkinContext!.Given" placeholder="例: [SYS:User_Unauthenticated]" />
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label small">When (トリガー: 1動詞)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.GherkinContext!.When" placeholder="例: [SW:Auth:Login_Failed] が連続で発生する" />
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label small">Then (結果状態)</label>
+                                        <input type="text" class="form-control form-control-sm" @bind="_formData.GherkinContext!.Then" placeholder="例: アカウントをロックする" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (_formData.Type == UsdmType.Specification)
                     {
                         <div class="card bg-light mt-3">
                             <div class="card-body">
@@ -254,7 +303,18 @@
         _isRunning = true;
         try {
             var currentDir = Directory.GetCurrentDirectory();
-            _context = await Orchestrator.RunPipelineAsync(_reqPath, Path.Combine(currentDir, "glossary.json"), currentDir);
+            
+            // 💡 修正：プレースホルダーを実際のパスに書き換え！
+            var reqPath = Path.Combine(currentDir, "requirements.json");
+            var glosPath = Path.Combine(currentDir, "glossary.json");
+            
+            var loadedNodes = ReqProvider.Load(reqPath);
+            var loadedGlossary = GlosProvider.Load(glosPath);
+
+            // 読み込んだデータでコンテキストを作り、Orchestratorに渡す
+            _context = new PipelineContext(loadedNodes, loadedGlossary);
+            await Orchestrator.RunPipelineAsync(_context);
+
             _nodes = SortTree(_context.Nodes.ToList());
         } finally {
             _isRunning = false;
@@ -300,8 +360,9 @@
             {
                 Id = Guid.NewGuid(),
                 ParentId = parentId,
-                Type = parentId == null ? UsdmType.Requirement : UsdmType.Specification,
+                Type = parentId == null ? UsdmType.ParentRequirement : UsdmType.Specification,
                 Description = "",
+                GherkinContext = new GherkinContext(),
                 EarsContext = new EarsContext()
             };
         }
@@ -313,6 +374,7 @@
                 ParentId = existingNode.ParentId,
                 Type = existingNode.Type,
                 Description = existingNode.Description,
+                GherkinContext = existingNode.GherkinContext ?? new GherkinContext(),
                 EarsContext = existingNode.EarsContext ?? new EarsContext()
             };
         }
@@ -323,6 +385,7 @@
 
     private async Task SaveModal()
     {
+        if (_formData.Type != UsdmType.ChildRequirement) _formData.GherkinContext = null;
         if (_formData.Type != UsdmType.Specification) _formData.EarsContext = null;
 
         if (_isNewNode) {
@@ -372,8 +435,10 @@
     }
 
     private string GetBadgeClass(UsdmType type) => type switch {
-        UsdmType.Requirement => "bg-primary",
+        UsdmType.ParentRequirement => "bg-primary",
         UsdmType.Rationale => "bg-secondary",
-        _ => "bg-info text-dark"
+        UsdmType.ChildRequirement => "bg-info text-dark",
+        UsdmType.Specification => "bg-light text-dark border",
+        _ => "bg-secondary"
     };
 }

@@ -6,14 +6,18 @@ namespace ReqPipeline.Core.Models;
 
 public class PipelineContext
 {
-    public IEnumerable<RequirementNode> Nodes { get; }
-    public Glossary Glossary { get; }
+    public IEnumerable<RequirementNode> Nodes { get; } = new List<RequirementNode>();
+    public Glossary Glossary { get; } = new Glossary();
     public List<RequirementIssue> Issues { get; } = new();
 
     public PipelineContext(IEnumerable<RequirementNode> nodes, Glossary glossary)
     {
         Nodes = nodes;
         Glossary = glossary;
+    }
+
+    public PipelineContext()
+    {
     }
 
     // エラー（Linterによる致命的な構文エラー等）が含まれているか確認する便利メソッド

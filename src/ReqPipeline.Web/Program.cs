@@ -2,6 +2,7 @@ using ReqPipeline.Web.Components;
 using ReqPipeline.Core.Application;
 using ReqPipeline.Core.StaticAnalysis;
 using ReqPipeline.Core.Interfaces;
+using ReqPipeline.Core.KnowledgeBase;
 using ReqPipeline.Core.Models;
 using ReqPipeline.Core.Infrastructure;
 using ReqPipeline.Core.Export;
@@ -23,22 +24,37 @@ builder.Services.AddScoped<IGlossaryProvider, JsonGlossaryProvider>();
 
 // 2. インフラ（Ollamaクライアント）
 // インスタンス化の際にモデル名を渡すようファクトリ形式で登録します
-builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient("qwen2.5:7b"));
+// builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient("qwen2.5:7b"));
+// appsettings.json から "OllamaSettings:ModelName" の値を取得する
+// （もし設定ファイルに書き忘れていた場合の保険として、フォールバック値も入れておきます）
+var modelName = builder.Configuration.GetValue<string>("OllamaSettings:ModelName") ?? "qwen2.5:7b";
 
-// 3. バリデーター群 (順番が重要！)
+// 取得したモデル名を使ってインスタンス化！
+builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient(modelName));
+
+// 3. ナレッジベースの登録（MarkdownKnowledgeBaseを実体として使う）
+// 実行ファイルのディレクトリにある "KnowledgeBase" フォルダを指定して生成する
+builder.Services.AddScoped<IKnowledgeBase>(sp => 
+{
+    var kbPath = Path.Combine(AppContext.BaseDirectory, "KnowledgeBase");
+    return new MarkdownKnowledgeBase(kbPath);
+});
+
+// 4. バリデーター群 (順番が重要！)
 // ※ASP.NET CoreのDIは、同じインターフェースで複数登録すると IEnumerable<T> としてまとめて注入してくれます
-builder.Services.AddScoped<IRequirementStaticAnalysis, StructureVerifier>();
-builder.Services.AddScoped<IRequirementStaticAnalysis, GlossaryVerifier>();
+// 4. バリデーター群 (それぞれ正しいインターフェース名で登録する！)
+builder.Services.AddScoped<StructureVerifier, StructureVerifier>();
+builder.Services.AddScoped<GlossaryVerifier, GlossaryVerifier>();
 builder.Services.AddScoped<IRequirementStaticAnalysis, SemanticValidator>();
 
-// 4. エクスポーター群
+// 5. エクスポーター群
 builder.Services.AddScoped<IRequirementExporter, KiroMarkdownExporter>();
 builder.Services.AddScoped<IRequirementExporter, UsdmCsvExporter>();
 
-// 5. すべてを束ねるオーケストレーター
+// 6. すべてを束ねるオーケストレーター
 builder.Services.AddScoped<PipelineOrchestrator>();
 
-// 6. QA用
+// 7. QA用
 builder.Services.AddScoped<ReqPipeline.Core.QaIntegration.AiQaPerspectiveGenerator>();
 // ========================================================
 

@@ -2,40 +2,49 @@
   "Project": "DefaultProject",
   "Entries": [
     {
-      "Id": "7a45803c-a348-4458-82a6-57b994343347",
+      "Id": "4d0a7312-3e24-4e35-aadc-7d2b97c80567",
       "Namespace": "SYS",
+      "Term": "User_Unauthenticated",
+      "Category": 3,
+      "Definition": "ユーザーがシステムに認証されていない状態。",
+      "AllowedEarsFields": null,
+      "FullName": "[SYS:User_Unauthenticated]"
+    },
+    {
+      "Id": "d2677b0f-6713-4714-a459-033d5af2b6c8",
+      "Namespace": "SW:Auth",
+      "Term": "Login_Failed",
+      "Category": 4,
+      "Definition": "ユーザーがログインに失敗したというイベント。",
+      "AllowedEarsFields": null,
+      "FullName": "[SW:Auth:Login_Failed]"
+    },
+    {
+      "Id": "8d4ab3ae-9178-4c33-a93a-60b1aa35c383",
+      "Namespace": "SW:Auth",
       "Term": "認証サーバ",
       "Category": 0,
-      "Definition": "開発対象の認証サーバ",
+      "Definition": "セキュリティに関する認証と認可を司るシステム。",
       "AllowedEarsFields": null,
-      "FullName": "[SYS:認証サーバ]"
+      "FullName": "[SW:Auth:認証サーバ]"
     },
     {
-      "Id": "79ba624b-f1e0-45a8-9d0c-fb5c4ee07a73",
-      "Namespace": "SYS",
-      "Term": "パスワードの入力ミス回数を無視する",
-      "Category": 1,
-      "Definition": "パスワード入力時に、ユーザーが入力ミスした場合ミス回数を無視する",
-      "AllowedEarsFields": null,
-      "FullName": "[SYS:パスワードの入力ミス回数を無視する]"
-    },
-    {
-      "Id": "eab7aabf-2d4e-4589-842d-7e03c580723b",
-      "Namespace": "SYS",
-      "Term": "ログイン失敗時",
-      "Category": 2,
-      "Definition": "ユーザーが認証サーバーへログインを失敗したとき",
-      "AllowedEarsFields": null,
-      "FullName": "[SYS:ログイン失敗時]"
-    },
-    {
-      "Id": "f63c31b5-5000-42c6-a42a-1fe8fd7864f8",
-      "Namespace": "SYS",
+      "Id": "9ab65e7a-5dc0-4413-bc46-279963963d23",
+      "Namespace": "SW:Auth",
       "Term": "アカウントをロックする",
       "Category": 1,
-      "Definition": "認証サーバー側が入力ミスを検知したときにユーザーアカウントをロックする",
+      "Definition": "ユーザーのアカウントを一時的に凍結する",
       "AllowedEarsFields": null,
-      "FullName": "[SYS:アカウントをロックする]"
+      "FullName": "[SW:Auth:アカウントをロックする]"
+    },
+    {
+      "Id": "9bf13bfb-8313-4497-8f3d-5932efba0e9c",
+      "Namespace": "SW:Auth",
+      "Term": "適切に入力ミスを無視する",
+      "Category": 1,
+      "Definition": "パスワードの入力ミス回数をカウントせず無視する。",
+      "AllowedEarsFields": null,
+      "FullName": "[SW:Auth:適切に入力ミスを無視する]"
     }
   ]
 }

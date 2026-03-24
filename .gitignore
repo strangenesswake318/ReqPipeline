@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+src/ReqPipeline.Web/docs/requirements/feature_auto_usdm.csv
+src/ReqPipeline.Web/docs/requirements/feature_auto_usdm.csv
+src/ReqPipeline.Web/docs/requirements/feature_auto_usdm.csv

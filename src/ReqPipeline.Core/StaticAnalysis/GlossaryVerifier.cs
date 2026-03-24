@@ -10,9 +10,17 @@ namespace ReqPipeline.Core.StaticAnalysis;
 // 💡 古い IRequirementRule ではなく、統一インターフェースの IRequirementStaticAnalysis を実装
 public class GlossaryVerifier : IRequirementStaticAnalysis
 {
+    
     // 💡戻り値でListを返すのではなく、Taskを返しつつ context に Issue を直接追加する設計
-    public Task ValidateAsync(PipelineContext context)
+    public virtual Task ValidateAsync(PipelineContext context)
     {
+
+        // 💡 1. そもそもこのLinterが呼ばれているか？
+        Console.WriteLine("======================================");
+        Console.WriteLine("🕵️‍♂️ [GlossaryVerifier] 検証スタート！");
+        Console.WriteLine($"📚 読み込まれた用語集の数: {context.Glossary.Entries.Count} 件");
+        Console.WriteLine("======================================");
+
         var glossary = context.Glossary;
 
         // 仕様（Specification）を対象とする
@@ -67,7 +75,16 @@ public class GlossaryVerifier : IRequirementStaticAnalysis
             }
         }
 
+        Console.WriteLine($"🚨 [GlossaryVerifier] 終了！ 現在のIssue総数: {context.Issues.Count}");
+        foreach (var issue in context.Issues)
+        {
+            Console.WriteLine($"   -> {issue.RuleId}: {issue.Message}");
+        }
+        Console.WriteLine("======================================");
+
         // 非同期インターフェースを満たすため、完了済みのタスクを返す
         return Task.CompletedTask;
+        
     }
+    
 }

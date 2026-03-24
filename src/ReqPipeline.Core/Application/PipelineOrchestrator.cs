@@ -1,58 +1,72 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-//using ReqPipeline.Core.Data;
 using ReqPipeline.Core.Interfaces;
 using ReqPipeline.Core.Models;
 using ReqPipeline.Core.StaticAnalysis;
-using ReqPipeline.Core.Export;
 
 
-namespace ReqPipeline.Core.Application;
+namespace ReqPipeline.Core.Application; // ※ご自身のnamespaceに合わせてください
 
 public class PipelineOrchestrator
 {
-    private readonly IRequirementProvider _reqProvider;
-    private readonly IGlossaryProvider _glosProvider;
-    private readonly IEnumerable<IRequirementStaticAnalysis> _validators;
-    private readonly IEnumerable<IRequirementExporter> _exporters; // ← 【追加】エクスポートも引き受ける
+    private readonly StructureVerifier _structureVerifier;
+    private readonly GlossaryVerifier _glossaryVerifier;
+    private readonly IRequirementStaticAnalysis _semanticValidator;
 
+    // コンストラクタで、必要な演奏者（Validator）を全員集める
     public PipelineOrchestrator(
-        IRequirementProvider reqProvider,
-        IGlossaryProvider glosProvider,
-        IEnumerable<IRequirementStaticAnalysis> validators,
-        IEnumerable<IRequirementExporter> exporters) // ← 【追加】
+        StructureVerifier structureVerifier,
+        GlossaryVerifier glossaryVerifier,
+        IRequirementStaticAnalysis semanticValidator)
     {
-        _reqProvider = reqProvider;
-        _glosProvider = glosProvider;
-        _validators = validators;
-        _exporters = exporters;
+        _structureVerifier = structureVerifier;
+        _glossaryVerifier = glossaryVerifier;
+        _semanticValidator = semanticValidator;
     }
 
-    // 引数に「出力先ディレクトリ」を追加
-    public async Task<PipelineContext> RunPipelineAsync(string reqPath, string glosPath, string outputDir)
+    public async Task RunPipelineAsync(PipelineContext context)
     {
-        var nodes = _reqProvider.Load(reqPath);
-        var glossary = _glosProvider.Load(glosPath);
-        var context = new PipelineContext(nodes, glossary);
+        Console.WriteLine("\n======================================");
+        Console.WriteLine("🚀 [Pipeline] 要求仕様検証パイプライン 開始");
+        Console.WriteLine("======================================");
 
-        // 1. バリデーションフェーズ
-        foreach (var validator in _validators)
+        // --------------------------------------------------
+        // 第1楽章：構造検証（StructureVerifier）
+        // --------------------------------------------------
+        Console.WriteLine("🔍 [Pipeline] 1. 構造検証 実行中...");
+        await _structureVerifier.ValidateAsync(context);
+        
+        if (context.HasFatalError()) 
         {
-            await validator.ValidateAsync(context);
-            if (context.HasFatalError()) break; // 致命的エラーでストップ
+            Console.WriteLine("❌ [Pipeline] 構造検証で致命的なエラーが発生したため、パイプラインを停止します。");
+            return;
         }
 
-        // 2. エクスポートフェーズ（致命的エラーがなければ全エクスポーターを回す）
-        if (!context.HasFatalError())
+        // --------------------------------------------------
+        // 第2楽章：用語集検証（GlossaryVerifier）
+        // --------------------------------------------------
+        Console.WriteLine("🔍 [Pipeline] 2. 用語集検証 実行中...");
+        await _glossaryVerifier.ValidateAsync(context);
+        
+        if (context.HasFatalError()) 
         {
-            foreach (var exporter in _exporters)
-            {
-                // プロジェクト名 "feature_auto" は一旦固定にしていますが、将来的には引数化できます
-                exporter.Export("feature_auto", context.Nodes, outputDir);
-            }
+            Console.WriteLine("❌ [Pipeline] 用語集検証で致命的なエラーが発生したため、パイプラインを停止します。");
+            return;
         }
 
-        return context;
+        // --------------------------------------------------
+        // 第3楽章：統合AIレビュー（SemanticValidator）
+        // --------------------------------------------------
+        Console.WriteLine("🧠 [Pipeline] 3. 統合AIレビュー 実行中...");
+        
+        // 💡 実働とログ出しはすべて SemanticValidator に委譲する！
+        await _semanticValidator.ValidateAsync(context);
+
+        // --------------------------------------------------
+        // パイプライン完了
+        // --------------------------------------------------
+        Console.WriteLine("======================================");
+        Console.WriteLine("✅ [Pipeline] すべての検証パイプラインが完了しました！");
+        Console.WriteLine("======================================\n");
     }
 }

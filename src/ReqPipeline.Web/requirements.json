@@ -1,28 +1,56 @@
 [
   {
-    "Id": "11111111-1111-1111-1111-111111111111",
+    "Id": "158c890c-1676-45bd-8461-2803a9a0ecdc",
     "ParentId": null,
     "Type": 0,
-    "Description": "ログイン時にセキュリティを提供すること",
-    "EarsContext": null
+    "Description": "システムは一般ユーザーに対して、正当なアカウント所有者であることを証明するための本人確認（ログイン）機能を提供し、認証に成功したユーザーのみが自身のデータにアクセスできる状態を保証すること。",
+    "EarsContext": null,
+    "GherkinContext": null
   },
   {
-    "Id": "22222222-2222-2222-2222-222222222222",
-    "ParentId": "11111111-1111-1111-1111-111111111111",
+    "Id": "caed0891-50d4-43c0-ac3e-ff985bb8b316",
+    "ParentId": "158c890c-1676-45bd-8461-2803a9a0ecdc",
     "Type": 1,
-    "Description": "ログイン時のセキュリティを極限まで高めるため",
-    "EarsContext": null
+    "Description": "近年、なりすましによる不正アクセスが多発しているため。一般ユーザーが「自分のデータや資産が第三者に盗まれるかもしれない」という不安を抱くことなく、絶対的な安心感をもって当社のオンラインサービスを継続利用できるようにするため。",
+    "EarsContext": null,
+    "GherkinContext": null
   },
   {
-    "Id": "33333333-3333-3333-3333-333333333333",
-    "ParentId": "22222222-2222-2222-2222-222222222222",
+    "Id": "69b7167b-46bb-4dbd-8891-099cae86e5ef",
+    "ParentId": "caed0891-50d4-43c0-ac3e-ff985bb8b316",
     "Type": 2,
-    "Description": "ログイン失敗時、認証サーバはパスワードの入力ミス回数を無視する。",
+    "Description": "ログイン失敗時のアカウントロック処理",
+    "EarsContext": null,
+    "GherkinContext": {
+      "Given": "[SYS:User_Unauthenticated]",
+      "When": "[SW:Auth:Login_Failed] が連続で発生する",
+      "Then": "アカウントをロックする"
+    }
+  },
+  {
+    "Id": "e6b2abaa-6567-43f3-84fa-f0e4c8063c85",
+    "ParentId": "69b7167b-46bb-4dbd-8891-099cae86e5ef",
+    "Type": 3,
+    "Description": "ログイン失敗時、認証サーバはアカウントをロックする",
+    "EarsContext": {
+      "Pattern": "EventDriven",
+      "Trigger": "[SW:Auth:Login_Failed]",
+      "Actor": "認証サーバ",
+      "Response": "アカウントをロックする"
+    },
+    "GherkinContext": null
+  },
+  {
+    "Id": "4f925fd6-2286-417f-88f2-b1664e60483f",
+    "ParentId": "69b7167b-46bb-4dbd-8891-099cae86e5ef",
+    "Type": 3,
+    "Description": "ログイン失敗時、認証サーバは適切に入力ミスを無視する。",
     "EarsContext": {
       "Pattern": "EventDriven",
       "Trigger": "ログイン失敗時",
       "Actor": "認証サーバ",
-      "Response": "パスワードの入力ミス回数を無視する"
-    }
+      "Response": "適切に入力ミスを無視する"
+    },
+    "GherkinContext": null
   }
 ]
