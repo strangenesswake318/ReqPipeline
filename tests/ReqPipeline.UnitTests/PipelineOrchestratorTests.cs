@@ -4,95 +4,77 @@ using System.Threading.Tasks;
 using Xunit;
 using Moq;
 using ReqPipeline.Core.Models;
-using ReqPipeline.Core.StaticAnalysis;
 using ReqPipeline.Core.Interfaces;
-using ReqPipeline.Core.Export;
-using ReqPipeline.Core.Application; // PipelineOrchestratorのネームスペース
+using ReqPipeline.Core.Application;
+using ReqPipeline.Core.StaticAnalysis; // ※PipelineOrchestratorのネームスペース
+
 
 namespace ReqPipeline.UnitTests;
 
 public class PipelineOrchestratorTests
 {
     [Fact]
-    public async Task RunPipelineAsync_Linterエラーがない場合_Exporterが実行されること()
+    public virtual async Task RunPipelineAsync_エラーがない場合_全ての検証が順番に実行されること()
     {
         // Arrange (準備)
-        var mockReqProvider = new Mock<IRequirementProvider>();
-        var mockGlosProvider = new Mock<IGlossaryProvider>();
-        var mockKB = new Mock<IKnowledgeBase>();
-        var mockAnalyzer = new Mock<IRequirementStaticAnalysis>();
-        var mockExporter = new Mock<IRequirementExporter>();
-
-        // 1. プロバイダーの影武者に「Loadが呼ばれたら空のデータを返す」よう仕込む
-        mockReqProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new List<RequirementNode>());
-        mockGlosProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new Glossary { Project = "Test", Entries = new List<GlossaryEntry>() });
-
-        // 2. Arrange の部分に影武者を追加
-        var mockLlmClient = new Mock<ILlmClient>();
-        mockLlmClient
-            .Setup(x => x.ReviewWithKnowledgeAsync(It.IsAny<PipelineContext>(), It.IsAny<string>()))
-            .ReturnsAsync("[]"); // テスト中は空のJSON配列を返すように仕込む
+        // 1. 今のOrchestratorが必要とする「3つの演奏者（Validator）」の影武者だけを用意！
+        var mockStructureVerifier = new Mock<StructureVerifier>();
+        var mockGlossaryVerifier = new Mock<GlossaryVerifier>();
+        var mockSemanticValidator = new Mock<IRequirementStaticAnalysis>();
 
         var orchestrator = new PipelineOrchestrator(
-            mockReqProvider.Object,
-            mockGlosProvider.Object,
-            mockKB.Object,
-            new List<IRequirementStaticAnalysis> { mockAnalyzer.Object },
-            new List<IRequirementExporter> { mockExporter.Object },
-            mockLlmClient.Object
+            mockStructureVerifier.Object,
+            mockGlossaryVerifier.Object,
+            mockSemanticValidator.Object
         );
 
+        // 💡 実行に必要なコンテキスト（楽譜）を用意する
+        var context = new PipelineContext(new List<RequirementNode>(), new Glossary());
+
         // Act (実行)
-        // メソッド名と引数を実際の実装に合わせる！
-        await orchestrator.RunPipelineAsync("dummyReqPath", "dummyGlosPath", "dummyOutputDir");
+        // 今のOrchestratorは、コンテキストを1つ渡すだけで動きます！
+        await orchestrator.RunPipelineAsync(context);
 
         // Assert (検証)
-        // エクスポートが1回呼ばれたことを確認 (引数は "feature_auto", 任意のノードリスト, "dummyOutputDir")
-        mockExporter.Verify(x => x.Export("feature_auto", It.IsAny<IEnumerable<RequirementNode>>(), "dummyOutputDir"), Times.Once);
+        // エラーがないので、3つの検証クラスがすべて「1回ずつ」呼ばれたことを証明する！
+        mockStructureVerifier.Verify(x => x.ValidateAsync(context), Times.Once);
+        mockGlossaryVerifier.Verify(x => x.ValidateAsync(context), Times.Once);
+        mockSemanticValidator.Verify(x => x.ValidateAsync(context), Times.Once);
     }
 
     [Fact]
-    public async Task RunPipelineAsync_Linterで致命的エラーが出た場合_Exporterがスキップされること()
+    public async Task RunPipelineAsync_構造検証で致命的エラーが出た場合_以降の検証がスキップされること()
     {
         // Arrange
-        var mockReqProvider = new Mock<IRequirementProvider>();
-        var mockGlosProvider = new Mock<IGlossaryProvider>();
-        var mockKB = new Mock<IKnowledgeBase>();
-        var mockAnalyzer = new Mock<IRequirementStaticAnalysis>();
-        var mockExporter = new Mock<IRequirementExporter>();
+        var mockStructureVerifier = new Mock<StructureVerifier>();
+        var mockGlossaryVerifier = new Mock<GlossaryVerifier>();
+        var mockSemanticValidator = new Mock<IRequirementStaticAnalysis>();
 
-        mockReqProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new List<RequirementNode>());
-        mockGlosProvider.Setup(x => x.Load(It.IsAny<string>())).Returns(new Glossary { Project = "Test", Entries = new List<GlossaryEntry>() });
-
-        // 1. Arrange の部分に影武者を追加
-        var mockLlmClient = new Mock<ILlmClient>();
-        mockLlmClient
-            .Setup(x => x.ReviewWithKnowledgeAsync(It.IsAny<PipelineContext>(), It.IsAny<string>()))
-            .ReturnsAsync("[]"); // テスト中は空のJSON配列を返すように仕込む
-
-        // 💡 2. 影武者のLinter（Analyzer）が動いた瞬間に、意図的に致命的エラーをコンテキストに混入させる！
-        mockAnalyzer.Setup(x => x.ValidateAsync(It.IsAny<PipelineContext>()))
+        // 💡 影武者の第1奏者（構造検証）が動いた瞬間に、意図的に致命的エラーを発生させる！
+        mockStructureVerifier.Setup(x => x.ValidateAsync(It.IsAny<PipelineContext>()))
             .Callback<PipelineContext>(ctx => 
             {
-                // 先ほど修正した Guid -> string への変換（.ToString()）も反映済みです
-                ctx.AddIssue(new RequirementIssue("SYS001", "致命的なエラー", Severity.Error, Guid.NewGuid().ToString()));
+                ctx.AddIssue(new RequirementIssue("SYS001", "構造が崩れています！", Severity.Error, Guid.NewGuid().ToString()));
             })
             .Returns(Task.CompletedTask);
 
         var orchestrator = new PipelineOrchestrator(
-            mockReqProvider.Object,
-            mockGlosProvider.Object,
-            mockKB.Object,
-            new List<IRequirementStaticAnalysis> { mockAnalyzer.Object },
-            new List<IRequirementExporter> { mockExporter.Object },
-            mockLlmClient.Object
+            mockStructureVerifier.Object,
+            mockGlossaryVerifier.Object,
+            mockSemanticValidator.Object
         );
 
+        var context = new PipelineContext(new List<RequirementNode>(), new Glossary());
+
         // Act
-        await orchestrator.RunPipelineAsync("dummyReqPath", "dummyGlosPath", "dummyOutputDir");
+        await orchestrator.RunPipelineAsync(context);
 
         // Assert
-        // エラーがあるので、Exporterの Export メソッドは【1度も呼ばれていない】ことを証明する！
-        mockExporter.Verify(x => x.Export(It.IsAny<string>(), It.IsAny<IEnumerable<RequirementNode>>(), It.IsAny<string>()), Times.Never);
+        // 第1奏者（構造検証）は呼ばれたことを確認
+        mockStructureVerifier.Verify(x => x.ValidateAsync(context), Times.Once);
+        
+        // 🛑 致命的エラーが出たので、第2、第3奏者（用語集・AI）は【1度も呼ばれていない】ことを証明する！
+        mockGlossaryVerifier.Verify(x => x.ValidateAsync(It.IsAny<PipelineContext>()), Times.Never);
+        mockSemanticValidator.Verify(x => x.ValidateAsync(It.IsAny<PipelineContext>()), Times.Never);
     }
 }

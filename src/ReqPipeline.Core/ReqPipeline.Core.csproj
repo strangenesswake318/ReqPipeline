@@ -10,7 +10,7 @@
     <None Update="Prompts\*.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Knowledge\*.md">
+    <None Update="KnowledgeBase\*.md">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

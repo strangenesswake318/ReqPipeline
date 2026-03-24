@@ -33,17 +33,18 @@ var modelName = builder.Configuration.GetValue<string>("OllamaSettings:ModelName
 builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient(modelName));
 
 // 3. ナレッジベースの登録（MarkdownKnowledgeBaseを実体として使う）
-// 実行ファイルのディレクトリにある "Knowledge" フォルダを指定して生成する
+// 実行ファイルのディレクトリにある "KnowledgeBase" フォルダを指定して生成する
 builder.Services.AddScoped<IKnowledgeBase>(sp => 
 {
-    var kbPath = Path.Combine(AppContext.BaseDirectory, "Knowledge");
+    var kbPath = Path.Combine(AppContext.BaseDirectory, "KnowledgeBase");
     return new MarkdownKnowledgeBase(kbPath);
 });
 
 // 4. バリデーター群 (順番が重要！)
 // ※ASP.NET CoreのDIは、同じインターフェースで複数登録すると IEnumerable<T> としてまとめて注入してくれます
-builder.Services.AddScoped<IRequirementStaticAnalysis, StructureVerifier>();
-builder.Services.AddScoped<IRequirementStaticAnalysis, GlossaryVerifier>();
+// 4. バリデーター群 (それぞれ正しいインターフェース名で登録する！)
+builder.Services.AddScoped<StructureVerifier, StructureVerifier>();
+builder.Services.AddScoped<GlossaryVerifier, GlossaryVerifier>();
 builder.Services.AddScoped<IRequirementStaticAnalysis, SemanticValidator>();
 
 // 5. エクスポーター群

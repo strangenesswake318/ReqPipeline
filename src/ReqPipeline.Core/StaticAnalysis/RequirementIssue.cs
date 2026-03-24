@@ -7,5 +7,5 @@ public record RequirementIssue(
     string Message, 
     Severity Severity, 
     string? Suggestion = null,
-    string TargetNodeId = null
+    string? TargetNodeId = null
 );
