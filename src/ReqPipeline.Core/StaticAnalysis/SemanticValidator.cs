@@ -97,7 +97,17 @@ public class SemanticValidator : IRequirementStaticAnalysis
             if (string.IsNullOrWhiteSpace(responseJson)) return;
 
             // 4. JSONパースとIssue登録
-            var cleanJson = ExtractJson(responseJson);
+            var cleanJson = ExtractJson(responseJson).Trim();
+            
+            // ==========================================
+            // 💡 追加：AIが配列 [] ではなくオブジェクト {} を返してきた場合の救済措置！
+            // ==========================================
+            if (cleanJson.StartsWith("{") && cleanJson.EndsWith("}"))
+            {
+                cleanJson = $"[{cleanJson}]"; // 強制的に配列にしてあげる
+                Console.WriteLine("🔧 [Auto-Fix] AIのJSONを配列形式に自動補正しました。");
+            }
+
             var issues = JsonSerializer.Deserialize<List<SemanticIssue>>(cleanJson);
 
             if (issues != null)
