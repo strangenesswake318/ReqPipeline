@@ -24,7 +24,13 @@ builder.Services.AddScoped<IGlossaryProvider, JsonGlossaryProvider>();
 
 // 2. インフラ（Ollamaクライアント）
 // インスタンス化の際にモデル名を渡すようファクトリ形式で登録します
-builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient("qwen2.5:7b"));
+// builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient("qwen2.5:7b"));
+// appsettings.json から "OllamaSettings:ModelName" の値を取得する
+// （もし設定ファイルに書き忘れていた場合の保険として、フォールバック値も入れておきます）
+var modelName = builder.Configuration.GetValue<string>("OllamaSettings:ModelName") ?? "qwen2.5:7b";
+
+// 取得したモデル名を使ってインスタンス化！
+builder.Services.AddScoped<ILlmClient>(sp => new OllamaLlmClient(modelName));
 
 // 3. ナレッジベースの登録（MarkdownKnowledgeBaseを実体として使う）
 // 実行ファイルのディレクトリにある "Knowledge" フォルダを指定して生成する
