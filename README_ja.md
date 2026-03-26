@@ -4,6 +4,10 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black.svg)](https://ollama.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[🇺🇸 Read this in English](README.md)
+[🇯🇵 Read this in Japanese](README_ja.md)
+
+
 **ReqPipeline** は、要求仕様の記述手法である **USDM** と **ローカルLLM** を融合させた、次世代の要求仕様エディタ＆静的解析パイプラインです。
 人が見落としがちな仕様の矛盾をAIが意味論的に検証し、開発の超上流工程でバグを検知します。
 
