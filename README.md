@@ -4,158 +4,178 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black.svg)](https://ollama.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**ReqPipeline** は、要求仕様の記述手法である **USDM** と **ローカルLLM** を融合させた、次世代の要求仕様エディタ＆静的解析パイプラインです。
-人が見落としがちな仕様の矛盾をAIが意味論的に検証し、開発の超上流工程でバグを検知します。
+**ReqPipeline** is a next-generation requirements specification editor and static analysis pipeline that fuses **USDM** (Universal Specification Descriptive Manner) with **Local LLMs**.
 
-![ReqPipeline AI検証デモンストレーション](docs/images/demo.gif)
+It semantically verifies logical contradictions in specifications that humans tend to overlook, detecting bugs in the ultra-upstream phase of development.
 
-## 「誰もが正しく、正しいものを作れるようにする」
+![ReqPipeline DEMO](docs/images/demo.gif)
 
-多くの開発現場では、要求定義の段階で「曖昧さ」が残されたまま実装が進み、後からコンテキストの不一致が発覚するという悲劇が起きています。ReqPipelineは、USDM/EARS/BDDという強力なフレームワークと、論理的矛盾を即座に見抜くAIレビューを組み合わせることで、開発の最上流工程で「認識のズレ」というバグを根絶することを目指しています。
+## **Our Vision: "Empowering everyone to build the right thing, right"**
 
-##  なぜ ReqPipeline を作ったのか？
+In many development environments, implementation proceeds while "ambiguity" remains in the requirements definition phase, leading to the tragedy of discovering context mismatches later on. ReqPipeline aims to eradicate the bug of "cognitive misalignment" in the earliest stages of development by combining powerful frameworks like USDM/EARS/BDD with an AI review system that instantly detects logical contradictions.
 
-ソフトウェア開発において、**「要求定義フェーズ」は最もバグが混入しやすく、同時に「バグの除去コストが最も安い」フェーズ**です。
-実装やテスト段階で仕様の矛盾が発覚した場合、その手戻りコストは要求定義段階の10倍〜100倍に膨れ上がります。
+## **Motivation & Problem to Solve**
 
-しかし、従来の自然言語による要求定義では、以下のような「人間由来のバグ」を防ぐことは困難でした。
-* **コンテキストの不一致**: 書き手と開発者の間にある「暗黙の了解」による認識ズレ。
-* **思考の曖昧さ・考慮漏れ**: 異常系の仕様抜けや、エッジケースの未定義。
-* **論理的矛盾**: システム全体で見たときの、仕様同士のサイレントな競合。
+In software development, the **"Requirements Definition Phase" is where bugs are most easily introduced, yet it is also the phase where the cost of removing them is the lowest**.
 
-**ReqPipeline は、この「仕様のバグ」をコードを書く前に（Shift-Leftで）駆逐するためのツールです。**
+If a contradiction in specifications is discovered during the implementation or testing phase, the cost of rework balloons to 10 to 100 times that of the requirements phase.
 
-人間が陥りやすい曖昧さを **USDM / EARS / BDD** という厳格な「型」によって物理的に防ぎ、さらにローカルLLMを用いた **AIパイプライン** が、人間では見落としがちな論理的矛盾を24時間・一瞬で検知します。
-要求定義の段階でバグを取り除くことで、チーム全員が「正しく、正しいものを作る」ことに集中できる世界を実現します。
+However, with traditional natural language requirements definition, it has been difficult to prevent "human-derived bugs" such as:
 
-##  はじめに (Getting Started)
+* **Context Mismatch**: Cognitive gaps due to "unspoken assumptions" between writers and developers.  
+* **Ambiguity & Omission**: Missing specifications for abnormal systems and undefined edge cases.  
+* **Logical Contradictions**: Silent conflicts between specifications when viewing the system as a whole.
 
-ReqPipeline はクロスプラットフォーム（Windows, macOS, Linux）で動作します。
-ローカル環境でAIパイプラインを動かすためのセットアップ手順は以下の通りです。
+**ReqPipeline is a tool to eradicate these "specification bugs" *before* writing code (Shift-Left).**
 
-### 1. 前提条件 (Prerequisites)
-実行環境に以下がインストールされていることを確認してください。
-* **[.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)**
-* **[Ollama](https://ollama.ai/)** (ローカルLLM実行エンジン)
+It physically prevents the ambiguities humans easily fall into through the strict "typing" of **USDM / EARS / BDD**, and an **AI pipeline** using a local LLM instantly detects logical contradictions that humans might miss, 24/7.
 
-### 2. LLMモデルの準備
-本システムはデフォルトで `qwen2.5:7b` モデルを使用します。ターミナル（コマンドプロンプト）で以下のコマンドを実行し、モデルをダウンロードしてください。
-*(※初回のみ数GBのダウンロードが発生します)*
+By removing bugs at the requirements definition stage, we realize a world where the entire team can focus on "building the right thing, right."
 
-```bash
+## **Getting Started**
+
+ReqPipeline runs cross-platform (Windows, macOS, Linux).
+
+The setup procedure to run the AI pipeline in a local environment is as follows:
+
+### **1\. Prerequisites**
+
+Ensure the following are installed in your execution environment:
+
+* [**.NET 10.0 SDK**](https://dotnet.microsoft.com/download/dotnet/10.0)  
+* [**Ollama**](https://ollama.ai/) (Local LLM execution engine)
+
+### **2\. LLM Model Preparation**
+
+This system uses the qwen2.5:7b model by default. Run the following command in your terminal to download the model.
+
+*(Note: A download of several GBs will occur only the first time)*
+
 ollama run qwen2.5:7b
-```
-Note: Ollamaがバックグラウンドで起動している状態にしておいてください。
 
-### 3. インストールと起動 (Installation & Run)
-リポジトリをクローンし、Webプロジェクトを実行します。
+**Note**: Please keep Ollama running in the background.
+
+### **3\. Installation & Run**
+
+Clone the repository and run the web project.
 
 ```bash
-# リポジトリのクローン
-git clone https://github.com/boxdate/ReqPipeline.git
+# Clone the repository  
+git clone \[https://github.com/boxdate/ReqPipeline.git\](https://github.com/boxdate/ReqPipeline.git)  
 cd ReqPipeline
 ```
-
 ```bash
-# Webアプリの起動
-cd src/ReqPipeline.Web
+\# Run the web application  
+cd src/ReqPipeline.Web  
 dotnet run
 ```
 
-### 4. ブラウザでアクセス
-起動後、ターミナルに表示されるURL（例: http://localhost:5000 または https://localhost:5001）にブラウザでアクセスしてください。
+### **4\. Access via Browser**
 
-##  基本的な使い方 (Basic Usage)
-サンプルデータの読み込み
-プロジェクト直下（実行ディレクトリ）にある requirements.json（要求仕様ツリー）と glossary.json（用語集）が自動的に読み込まれます。
+After starting, access the URL displayed in the terminal (e.g., http://localhost:5000 or https://localhost:5001) with your browser.
 
-### 要求・理由・仕様の編集
-Web UI上で、USDMのフォーマットに従い「要求（Requirement）」「理由（Rationale）」「仕様（Specification）」を追加・編集します。仕様には EARS コンテキストを設定できます。
+## **Basic Usage**
 
-### AI検証の実行
-画面右上の 「AI検証を実行」 ボタンをクリックします。
-バックグラウンドでOrchestratorが動き出し、ローカルLLMが仕様の矛盾や論理的欠陥を分析します。
+### **Loading Sample Data**
 
-### 結果の確認
-矛盾が発見された場合、該当するノードの直下に 「矛盾」 のバッジとAIからの具体的な指摘事項（理由）が表示されます。指摘に従って仕様を修正し、再度検証を回してください。
+The requirements.json (Requirements Specification Tree) and glossary.json (Glossary) located directly under the project (execution directory) are loaded automatically.
 
-### LLMモデルのカスタマイズ (Customizing the LLM)
+### **Editing Requirements, Rationales, and Specifications**
 
-本システムは、標準的なPCでも動作するようにデフォルトで軽量な `qwen2.5:7b` を使用していますが、VRAMに余裕がある環境であれば、よりパラメータ数の多いモデル（例: `qwen2.5:14b` や `qwen3.5:9b` など）に変更することで、AIレビューの論理推論精度をさらに向上させることができます。
+On the Web UI, add and edit "Requirements", "Rationales", and "Specifications" following the USDM format. You can set EARS contexts for the specifications.
 
-モデルの変更は、以下の2つの方法のいずれかで行えます。
+### **Executing AI Validation**
 
-#### 方法1: `appsettings.json` を編集する
-`src/ReqPipeline.Web/appsettings.json` ファイルを開き、以下のセクションを追加・編集してください。
-```json
-{
-  "OllamaSettings": {
-    "ModelName": "qwen2.5:14b"
-  }
+Click the **"🔍 Run AI Validation"** button in the upper right corner of the screen.
+
+The Orchestrator starts in the background, and the local LLM analyzes the specifications for contradictions and logical flaws.
+
+### **Checking the Results**
+
+If a contradiction is found, a **"⚠️ Contradiction"** badge and specific feedback (reason) from the AI will be displayed directly below the corresponding node. Correct the specification according to the feedback and run the validation again.
+
+## **Customizing the LLM**
+
+This system uses the lightweight qwen2.5:7b by default so that it can run on standard PCs. However, if you have an environment with ample VRAM, you can further improve the logical reasoning accuracy of the AI review by changing to a model with more parameters (e.g., qwen2.5:14b or qwen3.5:9b).
+
+You can change the model using either of the following two methods:
+
+#### **Method 1: Edit appsettings.json**
+
+Open the src/ReqPipeline.Web/appsettings.json file and add/edit the following section:
+
+```JSON
+{  
+  "OllamaSettings": {  
+    "ModelName": "qwen2.5:14b"  
+  }  
 }
 ```
 
-#### 方法2: 環境変数を使用する (CI/CDや一時的な切り替えに便利)
-環境変数 OllamaSettings__ModelName（アンダースコア2つ）を指定して実行することも可能です。
+#### **Method 2: Use Environment Variables (Useful for CI/CD or temporary switches)**
 
-(macOS / Linux の場合)
+You can also run it by specifying the environment variable OllamaSettings\_\_ModelName (two underscores).
+
+*(For macOS / Linux)*
+```bash
+export OllamaSettings\_\_ModelName="qwen2.5:14b"  
+dotnet run
+```
+
+*(For Windows PowerShell)*
 
 ```bash
-export OllamaSettings__ModelName="qwen2.5:14b"
+$env:OllamaSettings\_\_ModelName="qwen2.5:14b"  
 dotnet run
 ```
 
-(Windows PowerShell の場合)
+## **Contributing**
 
-```PowerShell
-$env:OllamaSettings__ModelName="qwen2.5:14b"
-dotnet run
-```
+ReqPipeline is an open-source project aiming for a world where "everyone can write correct specifications."
 
-## コントリビューション (Contributing)
+We welcome contributions in various forms, not just writing code\!
 
-ReqPipeline は、「誰もが正しい仕様を書ける世界」を目指すオープンソースプロジェクトです。
-コードの記述だけでなく、様々な形でのコントリビューションを大歓迎しています！
+### **Forms of Contribution We Welcome**
 
-### 歓迎する貢献の形
-以下のような貢献をお待ちしています。どんな小さなことでも構いません！
+We look forward to the following contributions. Even if you can't write code, your "expertise" is the greatest contribution\!
 
-### 歓迎する貢献の形
-以下のような貢献をお待ちしています。コードが書けなくても、あなたの「専門知識」が最大の貢献になります！
+* **Prompt Engineering with RE Expertise**  
+  * Proposals for improving LLM prompts, such as the core SemanticValidator.cs.  
+  * We are eager for PRs that incorporate **Requirements Engineering (RE) expertise** into prompts—like "Is it correct according to USDM conventions?", "Is the EARS syntax logical?", "Are any edge cases missed?"—to nurture the AI into an "expert requirements analyst"\! The knowledge of requirements development experts and QA engineers directly translates to the tool's intelligence.  
+* **Bug Reports & Use Case Proposals (Issues)**  
+  * Reports like "When I fed it an actual field specification, the AI missed this," or "This part of the UI is hard to use," as well as ideas for new features.  
+* **Providing Sample Data for Validation**  
+  * Sample cases of requirements.json containing typical contradictions or ambiguities found in the field, which can be used for testing.  
+* **Code Contributions (Pull Requests)**  
+  * Bug fixes, Blazor UI improvements, C\# architecture refactoring, etc.
 
-* **要求工学の知見を活かしたプロンプト改善 (Prompt Engineering with RE Expertise)**
-  * 本ツールの心臓部である `SemanticValidator.cs` などのLLMプロンプトの改善提案。
-  * 「USDMの作法として正しいか」「EARSの構文として論理的か」「エッジケースの考慮漏れはないか」といった、**要求工学（Requirements Engineering）の専門知識**をプロンプトに落とし込み、AIを「熟練の要求アナリスト」に育て上げるPRを熱望しています！要求開発の専門家やQAエンジニアの方々の知見が、そのままツールの賢さに直結します。
-* **バグ報告・ユースケースの提案 (Issues)**
-  * 「実際の現場の仕様書を食わせたら、AIがこんな見落としをした」「UIのここが使いにくい」といった報告や、新しい機能のアイデア。
-* **検証用サンプルデータの提供**
-  * テスト用に使える、現場の「あるある」な矛盾や曖昧さを含ませた `requirements.json` のサンプルケース。
-* **コードのコントリビューション (Pull Requests)**
-  * バグ修正、Blazor UIの改善、C#のアーキテクチャリファクタリングなど。
+### **Help Wanted\!**
 
-### 現在、特に助けを求めている領域 (Help Wanted!)
-私たちは将来的に、このツールを「チーム全体でコラボレーションできるインフラ」へと進化させたいと考えています。以下の領域に興味がある・得意なエンジニアを大募集しています！
+In the future, we want to evolve this tool into an "infrastructure for team-wide collaboration." We are actively seeking engineers who are interested in or excel at the following areas\!
 
-1. **JSONファイルを活用したチーム開発のベストプラクティス化**
-   * ローカルのJSONファイルをGitを用いて、複数人のチームで要求・仕様を開発するベストプラクティスの開発・実践など。
-2. **Phase 2に向けたDB設計・マルチユーザー対応**
-   * 現在はローカルのJSONファイルベースですが、PostgreSQL等を用いたチーム開発用のバックエンド設計の議論・実装。
-2. **UI/UXの改善 (Blazor)**
-   * USDMのツリー構造をより直感的にドラッグ＆ドロップで編集できるUIの実装など。
-3. **英語ドキュメントの翻訳**
-   * 世界中の要求開発者に届けるための、多言語対応。
+1. **Best Practices for Team Development using JSON files**  
+   * Building and practicing best practices for developing requirements/specifications in a multi-person team using Git with local JSON files.  
+2. **DB Design and Multi-User Support for Phase 2**  
+   * Currently based on local JSON files, but we want to discuss and implement a backend design for team development using PostgreSQL, etc.  
+3. **UI/UX Improvements (Blazor)**  
+   * Implementing a UI where the USDM tree structure can be edited more intuitively with drag & drop.  
+4. **Translation of Documents**  
+   * Multilingual support to reach requirements engineers worldwide.
 
-### 開発の始め方
-1. このリポジトリを Fork します。
-2. 新しいブランチを作成します (`git checkout -b feature/amazing-feature`)。
-3. 変更をコミットします (`git commit -m 'Add some amazing feature'`)。
-4. ブランチに Push します (`git push origin feature/amazing-feature`)。
-5. Pull Request を作成してください！
+### **How to Start Developing**
 
-## 動作環境について (Tested Environments)
+1. Fork this repository.  
+2. Create a new branch (git checkout \-b feature/amazing-feature).  
+3. Commit your changes (git commit \-m 'Add some amazing feature').  
+4. Push to the branch (git push origin feature/amazing-feature).  
+5. Open a Pull Request\!
 
-本システムは `.NET 10` および `Ollama` を基盤としているため、設計上は Windows / macOS / Linux のクロスプラットフォームで動作します。
+## **Tested Environments**
 
-ただし現在、作者のローカル環境（Ubuntu / Linux）でのみ動作確認が完了している状態です。
-**Windows や Mac 環境（特に Apple Silicon 搭載機）で動かしてみた方のフィードバックや、動作報告の Issue を大歓迎しています！**
-「Macでも動いたよ！」「Windowsだとここのパス設定でエラーが出た」など、どんな些細な情報でもプロジェクトの大きな助けになります。
+Because this system is based on .NET 10 and Ollama, it is designed to run cross-platform on Windows, macOS, and Linux.
+
+However, currently, operation has only been verified in the author's local environment (Ubuntu / Linux).
+
+**We greatly welcome feedback and Issue reports from those who have tried running it on Windows or Mac environments (especially Apple Silicon machines)\!**
+
+Any small piece of information, like "It worked on Mac\!" or "I got an error with this path setting on Windows," is a huge help to the project.
