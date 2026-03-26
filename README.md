@@ -4,6 +4,10 @@
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black.svg)](https://ollama.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[🇺🇸 Read this in English](README.md)
+[🇯🇵 Read this in Japanese](README_ja.md)
+
+
 **ReqPipeline** is a next-generation requirements specification editor and static analysis pipeline that fuses **USDM** (Universal Specification Descriptive Manner) with **Local LLMs**.
 
 It semantically verifies logical contradictions in specifications that humans tend to overlook, detecting bugs in the ultra-upstream phase of development.
